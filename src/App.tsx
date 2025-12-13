@@ -48,7 +48,7 @@ const Login = () => {
       <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-white/50 backdrop-blur-sm">
         <div className="text-center mb-8 flex flex-col items-center">
           <img 
-            src="/logo.png" 
+            src="logo.png" 
             alt="Logo Hispanidad" 
             className="h-20 w-auto mb-4 object-contain" 
             onError={(e) => {

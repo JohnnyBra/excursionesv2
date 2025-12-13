@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
+  base: './', // Permite que la app funcione en subdirectorios
   server: {
     port: 3006,
     strictPort: true,
