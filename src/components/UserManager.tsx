@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../services/mockDb';
 import { User, UserRole, ClassGroup, Student, Cycle } from '../types';
 import { useAuth } from '../App';
-import { Trash2, UserPlus, Edit, Save, Upload, Download, Database, Users, GraduationCap, School } from 'lucide-react';
+import { Trash2, UserPlus, Edit, Upload, Download, Database, Users, GraduationCap, School } from 'lucide-react';
 import { useToast } from './ui/Toast';
 
 export const UserManager: React.FC = () => {
