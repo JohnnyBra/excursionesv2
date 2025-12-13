@@ -4,7 +4,11 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 3006,
-    strictPort: true, // Fallará si el 3006 está ocupado
+    port: 3006, // Puerto único para toda la app
+    strictPort: true,
   },
+  build: {
+    outDir: 'dist',
+    sourcemap: false
+  }
 });
