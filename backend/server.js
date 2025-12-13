@@ -8,8 +8,14 @@ const app = express();
 const PORT = 3005;
 const DB_FILE = path.join(__dirname, 'database.json');
 
+// Middleware
 app.use(cors());
-app.use(bodyParser.json({ limit: '50mb' })); // Límite alto para backups
+app.use(bodyParser.json({ limit: '50mb' }));
+
+// --- SERVIR FRONTEND ESTÁTICO ---
+// Esto permite que Node sirva los archivos creados por 'vite build'
+// Resolviendo el problema de Mixed Content y simplificando el despliegue en Cloudflare.
+app.use(express.static(path.join(__dirname, '../dist')));
 
 // --- Datos Iniciales (Semilla) ---
 const INITIAL_DATA = {
@@ -55,7 +61,7 @@ const writeDb = (data) => {
   fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
 };
 
-// --- Endpoints ---
+// --- API Endpoints ---
 
 // 1. Obtener todo (Initial Load)
 app.get('/api/db', (req, res) => {
@@ -105,7 +111,15 @@ app.post('/api/restore', (req, res) => {
   }
 });
 
+// --- CATCH-ALL ROUTE ---
+// Cualquier petición que no sea API, devuelve el index.html de React.
+// Esto permite que React Router funcione correctamente al recargar páginas.
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
+
 app.listen(PORT, () => {
-  console.log(`✅ Servidor Backend corriendo en http://localhost:${PORT}`);
+  console.log(`✅ Servidor Todo-en-Uno corriendo en http://localhost:${PORT}`);
   console.log(`📁 Base de datos: ${DB_FILE}`);
+  console.log(`🌍 Sirviendo frontend desde: ../dist`);
 });

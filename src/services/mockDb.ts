@@ -1,8 +1,9 @@
 import { User, ClassGroup, Cycle, Student, Excursion, Participation } from '../types';
 
 // --- API CONFIG ---
-// Detecta automáticamente si estamos en localhost o en una IP de red
-const API_URL = `http://${window.location.hostname}:3005/api`;
+// Al servir el frontend desde el mismo backend, usamos rutas relativas.
+// Esto funciona tanto en localhost como bajo HTTPS en Cloudflare.
+const API_URL = '/api';
 
 // Cache local para mantener la velocidad de la UI
 let localState = {
@@ -23,7 +24,11 @@ const apiCall = async (endpoint: string, method: string = 'GET', body?: any) => 
     const config: RequestInit = { method, headers };
     if (body) config.body = JSON.stringify(body);
     
-    const res = await fetch(`${API_URL}${endpoint}`, config);
+    // Construir URL final (asegura que no haya doble slash)
+    const url = endpoint.startsWith('/') ? `${API_URL}${endpoint}` : `${API_URL}/${endpoint}`;
+    
+    const res = await fetch(url, config);
+    if (!res.ok) throw new Error(`Status: ${res.status}`);
     return await res.json();
   } catch (error) {
     console.error(`API Error [${method} ${endpoint}]:`, error);
@@ -33,8 +38,6 @@ const apiCall = async (endpoint: string, method: string = 'GET', body?: any) => 
 
 // --- Sync Functions ---
 const syncItem = (entity: string, item: any) => {
-  // Optimistic UI update already happened in the specific method
-  // Background sync
   apiCall(`/sync/${entity}`, 'POST', item);
 };
 
@@ -43,7 +46,7 @@ const deleteItem = (entity: string, id: string) => {
 };
 
 export const db = {
-  // Inicialización (Llamada desde App.tsx)
+  // Inicialización
   init: async () => {
     if (isInitialized) return;
     try {
@@ -52,13 +55,15 @@ export const db = {
         localState = data;
         isInitialized = true;
         console.log("Datos cargados del servidor:", data);
+      } else {
+        console.warn("Servidor devolvió datos vacíos o error.");
       }
     } catch (e) {
-      console.error("No se pudo conectar al backend.");
+      console.error("No se pudo conectar al backend. Asegúrate de que el servidor (puerto 3005) esté corriendo.");
     }
   },
 
-  // Getters (Síncronos porque leemos del cache local)
+  // Getters
   getUsers: () => localState.users,
   getCycles: () => localState.cycles,
   getClasses: () => localState.classes,
@@ -66,11 +71,11 @@ export const db = {
   getExcursions: () => localState.excursions,
   getParticipations: () => localState.participations,
   
-  // Direct Access Properties (Legacy support)
+  // Direct Access Properties
   get cycles() { return localState.cycles },
   get classes() { return localState.classes },
 
-  // --- WRITE OPERATIONS (Actualizan cache + Server) ---
+  // --- WRITE OPERATIONS ---
 
   // Users
   addUser: (user: User) => {
@@ -131,7 +136,7 @@ export const db = {
                 classId: targetClassId
             };
             localState.students.push(newStudent);
-            syncItem('students', newStudent); // Sync one by one (could be optimized but works)
+            syncItem('students', newStudent);
             count++;
          }
       }
@@ -227,7 +232,6 @@ export const db = {
   },
   
   reset: () => {
-      // Not implemented for server
       alert("Contacta al administrador para borrar el servidor.");
   }
 };
