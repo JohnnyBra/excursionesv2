@@ -1,0 +1,88 @@
+export enum UserRole {
+  DIRECCION = 'DIRECCION',
+  TUTOR = 'TUTOR',
+  TESORERIA = 'TESORERIA',
+  COORDINACION = 'COORDINACION'
+}
+
+export enum ExcursionScope {
+  GLOBAL = 'GLOBAL',
+  CICLO = 'CICLO',
+  CLASE = 'CLASE'
+}
+
+export enum ExcursionClothing {
+  UNIFORM = 'UNIFORM', // Uniforme
+  PE_KIT = 'PE_KIT',   // Chándal
+  STREET = 'STREET'    // Ropa de calle
+}
+
+export enum TransportType {
+  BUS = 'BUS',
+  WALKING = 'WALKING',
+  OTHER = 'OTHER'
+}
+
+export interface User {
+  id: string;
+  username: string;
+  password?: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  classId?: string;
+}
+
+export interface Cycle {
+  id: string;
+  name: string;
+}
+
+export interface ClassGroup {
+  id: string;
+  name: string;
+  cycleId: string;
+  tutorId: string;
+}
+
+export interface Student {
+  id: string;
+  name: string;
+  classId: string;
+}
+
+export interface Excursion {
+  id: string;
+  title: string;
+  description: string;
+  justification?: string;
+  destination: string;
+  dateStart: string;
+  dateEnd: string;
+  clothing?: ExcursionClothing;
+  transport?: TransportType;
+  costBus: number;
+  costEntry: number;
+  costGlobal: number;
+  estimatedStudents?: number;
+  scope: ExcursionScope;
+  targetId?: string;
+  creatorId: string;
+}
+
+export interface Participation {
+  id: string;
+  studentId: string;
+  excursionId: string;
+  authSigned: boolean;
+  authDate?: string;
+  paid: boolean;
+  amountPaid: number;
+  paymentDate?: string;
+  attended: boolean;
+}
+
+export interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+}
