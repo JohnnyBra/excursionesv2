@@ -13,11 +13,9 @@ app.use(cors());
 app.use(bodyParser.json({ limit: '50mb' }));
 
 // --- SERVIR FRONTEND ESTÁTICO ---
-// Esto permite que Node sirva los archivos creados por 'vite build'
-// Resolviendo el problema de Mixed Content y simplificando el despliegue en Cloudflare.
 app.use(express.static(path.join(__dirname, '../dist')));
 
-// --- Datos Iniciales (Semilla) ---
+// --- Datos Iniciales (Semilla) Actualizados ---
 const INITIAL_DATA = {
   users: [
     { id: 'u1', username: 'direccion', password: '123', name: 'Ana Directora', email: 'admin@hispanidad.com', role: 'DIRECCION' },
@@ -26,13 +24,16 @@ const INITIAL_DATA = {
     { id: 'u4', username: 'tutor2', password: '123', name: 'Maria Tutor 2', email: 'tutor2@hispanidad.com', role: 'TUTOR', classId: 'cl2' },
   ],
   cycles: [
-    { id: 'c1', name: 'Infantil' },
-    { id: 'c2', name: 'Primaria 1º Ciclo' },
-    { id: 'c3', name: 'Primaria 2º Ciclo' },
+    { id: 'c1', name: 'Infantil (3, 4, 5 años)' },
+    { id: 'c2', name: 'Primaria - 1º Ciclo (1º y 2º)' },
+    { id: 'c3', name: 'Primaria - 2º Ciclo (3º y 4º)' },
+    { id: 'c4', name: 'Primaria - 3º Ciclo (5º y 6º)' },
+    { id: 'c5', name: 'ESO - 1º Ciclo (1º y 2º)' },
+    { id: 'c6', name: 'ESO - 2º Ciclo (3º y 4º)' }
   ],
   classes: [
-    { id: 'cl1', name: '1º A', cycleId: 'c2', tutorId: 'u2' },
-    { id: 'cl2', name: '2º B', cycleId: 'c2', tutorId: 'u4' },
+    { id: 'cl1', name: '1º A Primaria', cycleId: 'c2', tutorId: 'u2' },
+    { id: 'cl2', name: '3º B ESO', cycleId: 'c6', tutorId: 'u4' },
   ],
   students: [
     { id: 's1', name: 'Pepito Pérez', classId: 'cl1' },
@@ -112,8 +113,6 @@ app.post('/api/restore', (req, res) => {
 });
 
 // --- CATCH-ALL ROUTE ---
-// Cualquier petición que no sea API, devuelve el index.html de React.
-// Esto permite que React Router funcione correctamente al recargar páginas.
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
