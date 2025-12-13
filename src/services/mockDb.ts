@@ -1,11 +1,9 @@
 import { User, ClassGroup, Cycle, Student, Excursion, Participation } from '../types';
 
 // --- API CONFIG ---
-// Al servir el frontend desde el mismo backend, usamos rutas relativas.
-// Esto funciona tanto en localhost como bajo HTTPS en Cloudflare.
 const API_URL = '/api';
 
-// Cache local para mantener la velocidad de la UI
+// Cache local
 let localState = {
   users: [] as User[],
   cycles: [] as Cycle[],
@@ -17,6 +15,16 @@ let localState = {
 
 let isInitialized = false;
 
+// Datos Iniciales por defecto (por si falla servidor o primera carga)
+const MOCK_CYCLES: Cycle[] = [
+  { id: 'c1', name: 'Infantil (3, 4, 5 años)' },
+  { id: 'c2', name: 'Primaria - 1º Ciclo (1º y 2º)' },
+  { id: 'c3', name: 'Primaria - 2º Ciclo (3º y 4º)' },
+  { id: 'c4', name: 'Primaria - 3º Ciclo (5º y 6º)' },
+  { id: 'c5', name: 'ESO - 1º Ciclo (1º y 2º)' },
+  { id: 'c6', name: 'ESO - 2º Ciclo (3º y 4º)' }
+];
+
 // --- Helper Fetch ---
 const apiCall = async (endpoint: string, method: string = 'GET', body?: any) => {
   try {
@@ -24,7 +32,7 @@ const apiCall = async (endpoint: string, method: string = 'GET', body?: any) => 
     const config: RequestInit = { method, headers };
     if (body) config.body = JSON.stringify(body);
     
-    // Construir URL final (asegura que no haya doble slash)
+    // Construir URL final
     const url = endpoint.startsWith('/') ? `${API_URL}${endpoint}` : `${API_URL}/${endpoint}`;
     
     const res = await fetch(url, config);
@@ -57,9 +65,11 @@ export const db = {
         console.log("Datos cargados del servidor:", data);
       } else {
         console.warn("Servidor devolvió datos vacíos o error.");
+        // Fallback a ciclos mock si el servidor está vacío
+        if(localState.cycles.length === 0) localState.cycles = MOCK_CYCLES;
       }
     } catch (e) {
-      console.error("No se pudo conectar al backend. Asegúrate de que el servidor (puerto 3005) esté corriendo.");
+      console.error("No se pudo conectar al backend.");
     }
   },
 
