@@ -25,8 +25,8 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Cambio solicitado: Puerto 3004
-const PORT = process.env.PORT || 3004;
+// Configuración de puerto actualizada a 3005
+const PORT = process.env.PORT || 3005;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
