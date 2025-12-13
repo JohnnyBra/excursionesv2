@@ -1,58 +1,116 @@
-# SchoolTripManager Pro 2.0 (Serverless Edition)
+# SchoolTripManager Pro 2.1
 
 **Creado por Javier Barrero**
 
-Plataforma integral para la gestión de excursiones escolares. Esta versión ha sido optimizada para funcionar sin servidor backend complejo, utilizando el almacenamiento local del navegador para máxima velocidad y simplicidad.
+Plataforma integral para la gestión de excursiones escolares. Esta versión utiliza una arquitectura **Cliente-Servidor ligera**:
+1.  **Frontend:** React + Vite (Puerto 3006).
+2.  **Backend:** Node.js + Archivos JSON (Puerto 3005).
+
+Los datos son persistentes y se guardan en el servidor (`backend/database.json`), permitiendo el acceso desde múltiples dispositivos en la misma red.
 
 ---
 
-## 🚀 Instalación Rápida
+## 🚀 Instalación Inicial
 
-Como hemos eliminado el backend complejo, la instalación es instantánea.
+1.  **Descargar código:**
+    Abre la terminal en la carpeta del proyecto.
 
-1.  **Instalar dependencias:**
-    Abre la terminal en la carpeta del proyecto y ejecuta:
+2.  **Instalar todas las dependencias (Frontend y Backend):**
     ```bash
-    npm install
+    npm run install:all
     ```
-
-2.  **Iniciar la aplicación:**
-    ```bash
-    npm run dev
-    ```
-
-3.  **¡Listo!**
-    La aplicación se abrirá en: `http://localhost:3006`
+    *(Nota: Si este comando falla, ejecuta `npm install` en la raíz y luego `cd backend && npm install`)*.
 
 ---
 
-## 💾 Sobre los Datos (Importante)
+## 💻 Modo Desarrollo
 
-Al no usar una base de datos externa (como PostgreSQL), los datos se guardan en el **Navegador (LocalStorage)** de tu ordenador.
+Para trabajar en la aplicación y ver cambios en tiempo real:
 
-*   **Persistencia:** Los datos no se borran al cerrar la ventana.
-*   **Copias de Seguridad:**
-    Para no perder datos o para moverlos a otro ordenador, ve a la sección **Dirección > Usuarios & Permisos > Sistema y Backup**.
-    *   Botón **"Descargar Backup Completo"**: Guarda un archivo `.json` con todo.
-    *   Botón **"Restaurar Sistema"**: Carga un archivo `.json` previo.
+```bash
+npm run dev
+```
+
+Esto abrirá la aplicación en `http://localhost:3006`.
+
+---
+
+## 🌍 Despliegue Persistente (Producción con PM2)
+
+Si quieres dejar la aplicación funcionando 24/7 en un servidor (NAS, Raspberry Pi, PC Servidor) y que se inicie sola al reiniciar, sigue estos pasos:
+
+### 1. Instalar PM2 Globalmente
+Herramienta para gestionar procesos en segundo plano.
+```bash
+npm install -g pm2
+```
+
+### 2. Construir el Frontend
+Genera la versión optimizada de la web para producción.
+```bash
+npm run build
+```
+*(Esto creará una carpeta `dist` con la web lista).*
+
+### 3. Iniciar los Servicios
+Ejecuta estos comandos uno por uno en la raíz del proyecto:
+
+1.  **Arrancar Backend (API):**
+    ```bash
+    pm2 start backend/server.js --name "schooltrip-api"
+    ```
+
+2.  **Arrancar Frontend (Web Estática):**
+    ```bash
+    pm2 serve dist 3006 --name "schooltrip-web" --spa
+    ```
+
+### 4. Guardar y Automatizar Inicio
+Para que se inicien automáticamente si se apaga el servidor:
+
+```bash
+pm2 save
+pm2 startup
+```
+*(Copia y pega el comando que te muestre `pm2 startup` en la terminal).*
+
+---
+
+## 📡 Acceso desde otros ordenadores
+
+Si has instalado esto en un servidor (ej. con IP `192.168.1.50`), puedes acceder desde cualquier ordenador de la red escribiendo en el navegador:
+
+`http://192.168.1.50:3006`
+
+*(La aplicación detectará automáticamente la IP del backend).*
+
+---
+
+## 💾 Gestión de Datos (Copias de Seguridad)
+
+Los datos se guardan físicamente en el archivo:
+`backend/database.json`
+
+**Métodos de Backup:**
+1.  **Automático:** Copia ese archivo manualmente cuando quieras.
+2.  **Desde la App:** Ve a **Dirección > Usuarios & Permisos > Sistema y Backup**.
+    *   **Descargar Backup:** Genera un JSON descargable.
+    *   **Restaurar:** Sube un JSON para sobrescribir la base de datos actual.
 
 ---
 
 ## 🔑 Usuarios de Prueba
 
-Puedes usar cualquiera de estos usuarios para entrar:
-
 | Rol | Usuario | Contraseña |
 | :--- | :--- | :--- |
 | **Dirección** | `direccion` | `123` |
 | **Tesoreria** | `tesoreria` | `123` |
-| **Tutor 1ºA** | `tutor1` | `123` |
-| **Tutor 2ºB** | `tutor2` | `123` |
+| **Tutor** | `tutor1` | `123` |
 
 ---
 
-## 🛠️ Estructura del Proyecto
+## 🛠️ Estructura Técnica
 
-*   `src/components`: Componentes de React (Vistas).
-*   `src/services/mockDb.ts`: El motor de base de datos local. Simula una base de datos real pero guarda todo en tu navegador.
-*   `src/types.ts`: Definiciones de TypeScript.
+*   **Frontend (Puerto 3006):** React, TailwindCSS, Lucide Icons.
+*   **Backend (Puerto 3005):** Node.js Express.
+*   **Base de Datos:** Archivo JSON local (No requiere SQL ni Docker).
