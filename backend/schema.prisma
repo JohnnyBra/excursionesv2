@@ -1,1 +1,128 @@
-������j��z��q�^�+ޭ��y�+��i���Z��ڱ�-��-��u�Z���q
+// Ubicación: backend/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // Puedes cambiar a "sqlite" para desarrollo local
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum UserRole {
+  DIRECCION
+  TUTOR
+  TESORERIA
+  COORDINACION
+}
+
+enum ExcursionScope {
+  GLOBAL
+  CICLO
+  CLASE
+}
+
+enum ExcursionClothing {
+  UNIFORM
+  PE_KIT
+  STREET
+}
+
+enum TransportType {
+  BUS
+  WALKING
+  OTHER
+}
+
+// Modelos
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String
+  name      String
+  email     String   @unique
+  role      UserRole
+  
+  // Relaciones
+  managedClass ClassGroup? // Si es tutor
+  createdExcursions Excursion[]
+}
+
+model Cycle {
+  id      String       @id @default(uuid())
+  name    String
+  classes ClassGroup[]
+}
+
+model ClassGroup {
+  id      String @id @default(uuid())
+  name    String
+  
+  cycleId String
+  cycle   Cycle  @relation(fields: [cycleId], references: [id])
+  
+  tutorId String @unique
+  tutor   User   @relation(fields: [tutorId], references: [id])
+  
+  students Student[]
+}
+
+model Student {
+  id      String     @id @default(uuid())
+  name    String
+  classId String
+  class   ClassGroup @relation(fields: [classId], references: [id])
+  
+  participations Participation[]
+}
+
+model Excursion {
+  id            String            @id @default(uuid())
+  title         String
+  description   String
+  justification String?
+  destination   String
+  
+  dateStart     DateTime
+  dateEnd       DateTime
+  
+  clothing      ExcursionClothing @default(UNIFORM)
+  transport     TransportType     @default(BUS)
+  
+  costBus       Float
+  costEntry     Float
+  costGlobal    Float
+  estimatedStudents Int?
+  
+  scope         ExcursionScope
+  targetId      String? // ID de Ciclo o Clase si aplica
+  
+  creatorId     String
+  creator       User   @relation(fields: [creatorId], references: [id])
+  
+  participations Participation[]
+  createdAt     DateTime @default(now())
+}
+
+model Participation {
+  id            String   @id @default(uuid())
+  
+  studentId     String
+  student       Student  @relation(fields: [studentId], references: [id])
+  
+  excursionId   String
+  excursion     Excursion @relation(fields: [excursionId], references: [id])
+  
+  authSigned    Boolean  @default(false)
+  authDate      DateTime?
+  
+  paid          Boolean  @default(false)
+  amountPaid    Float    @default(0)
+  paymentDate   DateTime?
+  
+  attended      Boolean  @default(false)
+
+  @@unique([studentId, excursionId])
+}
