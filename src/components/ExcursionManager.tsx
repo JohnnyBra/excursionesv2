@@ -5,10 +5,10 @@ import { useAuth } from '../App';
 import { useToast } from './ui/Toast';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { 
-  Plus, Save, DollarSign, CheckCircle, XCircle, 
-  Printer, Calendar, MapPin, Users, Target, Calculator, FileText, Copy, Trash2, FileSpreadsheet,
+  Plus, Save, DollarSign, CheckCircle, 
+  Printer, Calendar, MapPin, Calculator, FileText, Copy, Trash2, FileSpreadsheet,
   Share2, Shirt, Footprints, Bus, Clock, ArrowRight
 } from 'lucide-react';
 
@@ -20,7 +20,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   const { user } = useAuth();
   const { addToast } = useToast();
   const location = useLocation();
-  const navigate = useNavigate();
+  // const navigate = useNavigate(); // Eliminado porque no se usa
   
   const [excursions, setExcursions] = useState<Excursion[]>([]);
   const [selectedExcursion, setSelectedExcursion] = useState<Excursion | null>(null);
