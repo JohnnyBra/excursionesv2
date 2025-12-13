@@ -1,7 +1,8 @@
 import { User, ClassGroup, Cycle, Student, Excursion, Participation } from '../types';
 
 // --- API CONFIG ---
-const API_URL = 'http://localhost:3005/api';
+// Detecta automáticamente si estamos en localhost o en una IP de red
+const API_URL = `http://${window.location.hostname}:3005/api`;
 
 // Cache local para mantener la velocidad de la UI
 let localState = {
