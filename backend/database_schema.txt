@@ -1,0 +1,4 @@
+MOVED: El esquema de base de datos se ha movido correctamente a:
+backend/prisma/schema.prisma
+
+Puedes eliminar este archivo.
