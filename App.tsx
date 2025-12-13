@@ -93,12 +93,6 @@ const Login = () => {
         </form>
         
         <div className="mt-8 text-center space-y-4">
-            <p className="text-xs text-gray-400">
-                Credenciales Demo:<br/>
-                direccion / 123<br/>
-                tesoreria / 123<br/>
-                tutor1 / 123
-            </p>
             <p className="text-[10px] text-gray-300 font-medium tracking-wider uppercase border-t border-gray-100 pt-4 w-1/2 mx-auto">
                 Creado por Javier Barrero
             </p>
