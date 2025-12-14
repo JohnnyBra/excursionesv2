@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../services/mockDb';
 import { User, UserRole, ClassGroup, Student, Cycle } from '../types';
 import { useAuth } from '../App';
-import { Trash2, UserPlus, Edit, Upload, Download, Database, Users, GraduationCap, School } from 'lucide-react';
+import { Trash2, UserPlus, Edit, Upload, Download, Database, Users, GraduationCap, School, Search } from 'lucide-react';
 import { useToast } from './ui/Toast';
 
 export const UserManager: React.FC = () => {
@@ -15,6 +15,9 @@ export const UserManager: React.FC = () => {
     const [classes, setClasses] = useState<ClassGroup[]>([]);
     const [students, setStudents] = useState<Student[]>([]);
     const [cycles, setCycles] = useState<Cycle[]>([]);
+
+    // Search State
+    const [userSearch, setUserSearch] = useState('');
 
     // Editors
     const [editingUser, setEditingUser] = useState<Partial<User> | null>(null);
@@ -72,6 +75,14 @@ export const UserManager: React.FC = () => {
             refreshData();
         }
     };
+
+    // Filter Logic
+    const filteredUsers = users.filter(u => {
+        const term = userSearch.toLowerCase();
+        return u.name.toLowerCase().includes(term) || 
+               u.username.toLowerCase().includes(term) || 
+               u.role.toLowerCase().includes(term);
+    });
 
     // --- STUDENT MANAGEMENT ---
     const handleSaveStudent = () => {
@@ -171,11 +182,23 @@ export const UserManager: React.FC = () => {
                 {/* --- USERS TAB --- */}
                 {activeTab === 'users' && (
                     <div className="space-y-6">
-                        <div className="flex justify-between items-center">
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                             <h3 className="text-lg font-bold">Listado de Usuarios</h3>
-                            <button onClick={() => setEditingUser({ role: UserRole.TUTOR, password: '' })} className="btn-primary flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded">
-                                <UserPlus size={16} /> Crear Usuario
-                            </button>
+                            <div className="flex gap-2 w-full sm:w-auto">
+                                <div className="relative flex-1 sm:flex-none">
+                                    <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+                                    <input 
+                                        type="text" 
+                                        placeholder="Buscar por nombre o rol..." 
+                                        className="pl-10 pr-4 py-2 border rounded-lg w-full sm:w-64 focus:ring-2 focus:ring-blue-500 outline-none"
+                                        value={userSearch}
+                                        onChange={(e) => setUserSearch(e.target.value)}
+                                    />
+                                </div>
+                                <button onClick={() => setEditingUser({ role: UserRole.TUTOR, password: '' })} className="btn-primary flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded shadow-sm hover:bg-blue-700 transition">
+                                    <UserPlus size={16} /> <span className="hidden sm:inline">Crear Usuario</span>
+                                </button>
+                            </div>
                         </div>
                         
                         {editingUser && (
@@ -196,29 +219,39 @@ export const UserManager: React.FC = () => {
                             </div>
                         )}
 
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-gray-50 text-gray-500">
-                                <tr>
-                                    <th className="p-3">Nombre</th>
-                                    <th className="p-3">Usuario</th>
-                                    <th className="p-3">Rol</th>
-                                    <th className="p-3 text-right">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {users.map(u => (
-                                    <tr key={u.id} className="border-t hover:bg-gray-50">
-                                        <td className="p-3 font-medium">{u.name}</td>
-                                        <td className="p-3 text-gray-500">{u.username}</td>
-                                        <td className="p-3"><span className="bg-gray-100 px-2 py-1 rounded text-xs">{u.role}</span></td>
-                                        <td className="p-3 text-right">
-                                            <button onClick={() => setEditingUser(u)} className="text-blue-600 mr-2"><Edit size={16}/></button>
-                                            <button onClick={() => handleDeleteUser(u.id)} className="text-red-600"><Trash2 size={16}/></button>
-                                        </td>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-gray-50 text-gray-500">
+                                    <tr>
+                                        <th className="p-3">Nombre</th>
+                                        <th className="p-3">Usuario</th>
+                                        <th className="p-3">Rol</th>
+                                        <th className="p-3 text-right">Acciones</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {filteredUsers.length > 0 ? (
+                                        filteredUsers.map(u => (
+                                            <tr key={u.id} className="border-t hover:bg-gray-50">
+                                                <td className="p-3 font-medium">{u.name}</td>
+                                                <td className="p-3 text-gray-500">{u.username}</td>
+                                                <td className="p-3"><span className="bg-gray-100 px-2 py-1 rounded text-xs">{u.role}</span></td>
+                                                <td className="p-3 text-right">
+                                                    <button onClick={() => setEditingUser(u)} className="text-blue-600 mr-2"><Edit size={16}/></button>
+                                                    <button onClick={() => handleDeleteUser(u.id)} className="text-red-600"><Trash2 size={16}/></button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={4} className="p-8 text-center text-gray-400">
+                                                No se encontraron usuarios con ese criterio.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 )}
 
