@@ -225,14 +225,14 @@ const AppContent = () => {
           <Route path="/*" element={
             user ? (
               <Layout>
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/excursions" element={<ExcursionManager mode="management" />} />
-                  <Route path="/treasury" element={<ExcursionManager mode="treasury" />} />
-                  <Route path="/users" element={<UserManager />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="*" element={<Navigate to="/" />} />
-                </Routes>
+                  <Routes>
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/excursions" element={<ExcursionManager mode="management" />} />
+                    <Route path="/treasury" element={<ExcursionManager mode="treasury" />} />
+                    <Route path="/users" element={<UserManager />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="*" element={<Navigate to="/" />} />
+                  </Routes>
               </Layout>
             ) : (
               <Navigate to="/login" />

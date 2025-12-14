@@ -5,11 +5,11 @@ import { useAuth } from '../App';
 import { useToast } from './ui/Toast';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Plus, Save, DollarSign, CheckCircle, 
   Printer, Calendar, MapPin, Calculator, FileText, Copy, Trash2, FileSpreadsheet,
-  Share2, Shirt, Footprints, Bus, Clock, ArrowRight, Info, Download, FileBarChart
+  Share2, Shirt, Footprints, Bus, Clock, ArrowRight, Info, FileBarChart
 } from 'lucide-react';
 
 interface ExcursionManagerProps {
@@ -20,6 +20,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   const { user } = useAuth();
   const { addToast } = useToast();
   const location = useLocation();
+  const navigate = useNavigate();
   
   const [excursions, setExcursions] = useState<Excursion[]>([]);
   const [selectedExcursion, setSelectedExcursion] = useState<Excursion | null>(null);
@@ -62,7 +63,8 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
         const targetExcursion = excursions.find(e => e.id === targetId);
         if (targetExcursion) {
             handleSelect(targetExcursion);
-            window.history.replaceState({}, document.title);
+            // Cleanup state by replacing history
+            navigate(location.pathname, { replace: true, state: {} });
         }
     }
   }, [excursions, location.state]);
@@ -309,10 +311,13 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
     const reportData = filteredExcursions.map(ex => {
         const parts = db.getParticipations().filter(p => p.excursionId === ex.id);
         const collected = parts.filter(p => p.paid).reduce((sum, p) => sum + p.amountPaid, 0);
-        // Coste Real = Bus + Otros + (Entradas * Asistentes reales o estimados si aun no ha ocurrido)
-        // Usamos estimados para el coste teórico si no ha pasado, o asistentes reales si ya hay datos
+        
+        // Coste Real = Gastos Fijos (Bus + Otros) + Gastos Variables (Entradas * Asistentes)
         const entryCount = parts.filter(p => p.attended).length || parts.filter(p => p.paid).length;
-        const totalCost = (ex.costBus || 0) + (ex.costOther || 0) + ((ex.costEntry || 0) * entryCount);
+        
+        const fixedCosts = (ex.costBus || 0) + (ex.costOther || 0);
+        const variableCosts = (ex.costEntry || 0) * entryCount;
+        const totalCost = fixedCosts + variableCosts;
         
         return {
             fecha: new Date(ex.dateStart).toLocaleDateString(),
@@ -405,18 +410,28 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       
       const collected = participants.filter(p => p.paid).reduce((acc, p) => acc + p.amountPaid, 0);
       const entryCount = participants.filter(p => p.attended).length || participants.filter(p => p.paid).length;
-      const realCost = (selectedExcursion.costBus || 0) + (selectedExcursion.costOther || 0) + (entryCount * selectedExcursion.costEntry);
+      
+      const fixedCosts = (selectedExcursion.costBus || 0) + (selectedExcursion.costOther || 0);
+      const variableCosts = (entryCount * selectedExcursion.costEntry);
+      const realCost = fixedCosts + variableCosts;
       
       doc.text(`Total Recaudado: ${collected}€`, 14, 40);
-      doc.text(`Gastos (Bus ${selectedExcursion.costBus} + Otros ${selectedExcursion.costOther || 0} + Entradas): ${realCost}€`, 14, 50);
-      doc.text(`Balance: ${collected - realCost}€`, 14, 60);
+      
+      // Desglose detallado
+      doc.text(`Gastos Fijos (Bus + Otros): ${fixedCosts}€`, 14, 50);
+      doc.text(`Gastos Variables (Entradas x${entryCount}): ${variableCosts}€`, 14, 56);
+      doc.text(`Coste Total: ${realCost}€`, 14, 62);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text(`Balance Final: ${collected - realCost}€`, 14, 75);
+      doc.setFont("helvetica", "normal");
 
       const tableData = participants.map(p => [
           studentsMap[p.studentId]?.name || 'Unknown',
           p.paid ? `${p.amountPaid}€` : 'Pendiente'
       ]);
 
-      autoTable(doc, { startY: 70, head: [['Alumno', 'Pago']], body: tableData });
+      autoTable(doc, { startY: 80, head: [['Alumno', 'Pago']], body: tableData });
       doc.save(`finanzas_${selectedExcursion.title}.pdf`);
   };
 
