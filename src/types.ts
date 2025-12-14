@@ -62,6 +62,7 @@ export interface Excursion {
   clothing?: ExcursionClothing;
   transport?: TransportType;
   costBus: number;
+  costOther?: number; // Nuevo: Otros gastos (parking, material, etc.)
   costEntry: number;
   costGlobal: number;
   estimatedStudents?: number;
