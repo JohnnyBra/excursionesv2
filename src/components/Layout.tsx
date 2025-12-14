@@ -41,7 +41,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       <div className="md:hidden bg-white p-4 flex justify-between items-center shadow-sm sticky top-0 z-50">
         <div className="flex items-center gap-2">
             <img 
-                src="logo.png" 
+                src="/logo.png" 
                 alt="Logo" 
                 className="h-8 w-auto" 
             />
@@ -60,7 +60,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       `}>
         <div className="p-6 flex flex-col items-center text-center border-b border-gray-100">
           <img 
-            src="logo.png" 
+            src="/logo.png" 
             alt="Logo Hispanidad" 
             className="h-20 w-auto mb-3 object-contain drop-shadow-sm" 
           />
