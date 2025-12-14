@@ -128,28 +128,31 @@ export const Dashboard: React.FC = () => {
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <h3 className="text-lg font-bold mb-4">Próximas Salidas</h3>
           <div className="space-y-4">
-            {relevantExcursions.map(ex => (
-              <div 
-                key={ex.id} 
-                onClick={() => handleExcursionClick(ex.id)}
-                className="flex items-center gap-4 p-3 hover:bg-blue-50 cursor-pointer rounded-lg transition-colors border-b border-gray-100 last:border-0 group"
-              >
-                <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 font-bold shrink-0 group-hover:bg-blue-200 transition-colors">
-                  {new Date(ex.dateStart).getDate()}
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-semibold text-gray-800 group-hover:text-blue-700">{ex.title}</h4>
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                     <span>{ex.destination}</span>
-                     <span>•</span>
-                     <span className="font-medium text-blue-600">{getScopeLabel(ex.scope, ex.targetId)}</span>
+            {relevantExcursions.map(ex => {
+              const isPast = new Date(ex.dateEnd) < new Date();
+              return (
+                <div 
+                  key={ex.id} 
+                  onClick={() => handleExcursionClick(ex.id)}
+                  className={`flex items-center gap-4 p-3 hover:bg-blue-50 cursor-pointer rounded-lg transition-colors border-b border-gray-100 last:border-0 group ${isPast ? 'opacity-70' : ''}`}
+                >
+                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center font-bold shrink-0 transition-colors ${isPast ? 'bg-gray-100 text-gray-400' : 'bg-blue-100 text-blue-600 group-hover:bg-blue-200'}`}>
+                    {new Date(ex.dateStart).getDate()}
                   </div>
+                  <div className="flex-1">
+                    <h4 className={`font-semibold ${isPast ? 'text-gray-500 line-through decoration-gray-400' : 'text-gray-800 group-hover:text-blue-700'}`}>{ex.title}</h4>
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                       <span>{ex.destination}</span>
+                       <span>•</span>
+                       <span className={`font-medium ${isPast ? 'text-gray-400' : 'text-blue-600'}`}>{getScopeLabel(ex.scope, ex.targetId)}</span>
+                    </div>
+                  </div>
+                  <span className={`text-xs px-2 py-1 rounded-full ${isPast ? 'bg-gray-100 text-gray-400' : ex.scope === 'GLOBAL' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
+                    {ex.scope}
+                  </span>
                 </div>
-                <span className={`text-xs px-2 py-1 rounded-full ${ex.scope === 'GLOBAL' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
-                  {ex.scope}
-                </span>
-              </div>
-            ))}
+              );
+            })}
             {relevantExcursions.length === 0 && (
               <p className="text-gray-400 text-center py-4">No hay excursiones programadas</p>
             )}

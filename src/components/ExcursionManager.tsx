@@ -220,7 +220,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
 
   const calculateGlobalCost = () => {
       const bus = Number(formData.costBus) || 0;
-      const other = Number(formData.costOther) || 0; // NUEVO: Gastos extra
+      const other = Number(formData.costOther) || 0; 
       const entry = Number(formData.costEntry) || 0;
       const students = Number(formData.estimatedStudents) || 1; 
 
@@ -239,7 +239,14 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
     if ((activeTab === 'budget' && isEditing) || (activeTab === 'budget' && user?.role === UserRole.TUTOR)) {
         calculateGlobalCost();
     }
-  }, [formData.costBus, formData.costOther, formData.costEntry, formData.estimatedStudents]);
+  }, [
+    formData.costBus, 
+    formData.costOther, 
+    formData.costEntry, 
+    formData.estimatedStudents, 
+    activeTab, 
+    isEditing
+  ]);
 
   const handleSave = () => {
     if (!formData.title || !formData.dateStart) {
@@ -626,21 +633,24 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
-          {excursions.map(ex => (
-            <div 
-              key={ex.id}
-              onClick={() => handleSelect(ex)}
-              className={`p-3 rounded-lg cursor-pointer transition border-l-4 ${selectedExcursion?.id === ex.id ? 'border-l-blue-600 bg-blue-50' : 'border-l-transparent hover:bg-gray-50'}`}
-            >
-              <h3 className="font-semibold text-gray-800 truncate">{ex.title}</h3>
-              <div className="flex justify-between items-center mt-1">
-                 <span className="text-xs text-gray-500">{new Date(ex.dateStart).toLocaleDateString()}</span>
-                 <span className="text-xs bg-gray-200 text-gray-700 px-1 rounded truncate max-w-[80px]">
-                    {getScopeLabel(ex.scope, ex.targetId)}
-                 </span>
-              </div>
-            </div>
-          ))}
+          {excursions.map(ex => {
+            const isPast = new Date(ex.dateEnd) < new Date();
+            return (
+                <div 
+                key={ex.id}
+                onClick={() => handleSelect(ex)}
+                className={`p-3 rounded-lg cursor-pointer transition border-l-4 ${selectedExcursion?.id === ex.id ? 'border-l-blue-600 bg-blue-50' : 'border-l-transparent hover:bg-gray-50'}`}
+                >
+                <h3 className={`font-semibold truncate ${isPast ? 'text-gray-400 line-through decoration-gray-400' : 'text-gray-800'}`}>{ex.title}</h3>
+                <div className="flex justify-between items-center mt-1">
+                    <span className={`text-xs ${isPast ? 'text-gray-300' : 'text-gray-500'}`}>{new Date(ex.dateStart).toLocaleDateString()}</span>
+                    <span className={`text-xs px-1 rounded truncate max-w-[80px] ${isPast ? 'bg-gray-100 text-gray-400' : 'bg-gray-200 text-gray-700'}`}>
+                        {getScopeLabel(ex.scope, ex.targetId)}
+                    </span>
+                </div>
+                </div>
+            );
+          })}
         </div>
       </div>
 
