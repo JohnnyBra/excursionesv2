@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2563eb;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1e40af;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="2" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  
+  <!-- Shield Background -->
+  <path d="M50 5 L15 20 V45 C15 70 50 95 50 95 C50 95 85 70 85 45 V20 L50 5 Z" 
+        fill="url(#blueGrad)" stroke="#1e3a8a" stroke-width="2" filter="url(#shadow)"/>
+  
+  <!-- Inner Design: Open Book / Education -->
+  <path d="M30 35 C30 35 40 40 50 35 C60 40 70 35 70 35 V60 C70 60 60 65 50 60 C40 65 30 60 30 60 V35 Z" 
+        fill="#ffffff" opacity="0.9"/>
+  <line x1="50" y1="35" x2="50" y2="60" stroke="#2563eb" stroke-width="2"/>
+  
+  <!-- Text hint (H for Hispanidad) -->
+  <text x="50" y="80" font-family="Arial, sans-serif" font-size="12" fill="white" text-anchor="middle" font-weight="bold" letter-spacing="1">EST. 2024</text>
+  
+  <!-- Star -->
+  <path d="M50 20 L53 28 L62 28 L55 34 L57 42 L50 37 L43 42 L45 34 L38 28 L47 28 Z" fill="#fbbf24"/>
+</svg>

@@ -7,9 +7,6 @@ import {
   Wallet, Settings, Menu 
 } from 'lucide-react';
 
-// Safe Fallback SVG (Base64)
-const FALLBACK_LOGO = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='%232563eb'%3E%3Cpath d='M50 0L0 20v30c0 30 50 50 50 50s50-20 50-50V20L50 0zm0 15c5 0 10 5 10 10s-5 10-10 10-10-5-10-10 5-10 10-10z' fill='white'/%3E%3C/svg%3E";
-
 interface LayoutProps {
   children: React.ReactNode;
 }
@@ -38,14 +35,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     );
   };
 
-  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-      const target = e.currentTarget;
-      if (target.src !== FALLBACK_LOGO) {
-          target.src = FALLBACK_LOGO;
-          target.onerror = null; // Stops the loop
-      }
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
       {/* Mobile Header */}
@@ -55,7 +44,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 src="logo.png" 
                 alt="Logo" 
                 className="h-8 w-auto" 
-                onError={handleImageError}
             />
             <h1 className="font-bold text-sm text-gray-800">Gestor Excursiones</h1>
         </div>
@@ -74,8 +62,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           <img 
             src="logo.png" 
             alt="Logo Hispanidad" 
-            className="h-16 w-auto mb-3 object-contain" 
-            onError={handleImageError} 
+            className="h-20 w-auto mb-3 object-contain drop-shadow-sm" 
           />
           <h1 className="text-lg font-bold text-gray-800 leading-tight">
             Gestor de Excursiones
