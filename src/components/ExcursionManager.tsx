@@ -9,7 +9,7 @@ import { useLocation } from 'react-router-dom';
 import { 
   Plus, Save, DollarSign, CheckCircle, 
   Printer, Calendar, MapPin, Calculator, FileText, Copy, Trash2, FileSpreadsheet,
-  Share2, Shirt, Footprints, Bus, Clock, ArrowRight
+  Share2, Shirt, Footprints, Bus, Clock, ArrowRight, Info, Download, FileBarChart
 } from 'lucide-react';
 
 interface ExcursionManagerProps {
@@ -20,7 +20,6 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   const { user } = useAuth();
   const { addToast } = useToast();
   const location = useLocation();
-  // const navigate = useNavigate(); // Eliminado porque no se usa
   
   const [excursions, setExcursions] = useState<Excursion[]>([]);
   const [selectedExcursion, setSelectedExcursion] = useState<Excursion | null>(null);
@@ -29,6 +28,10 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
 
   // Share Modal State
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  
+  // Report Modal State
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportYear, setReportYear] = useState(new Date().getFullYear());
 
   // Form State
   const [formData, setFormData] = useState<Partial<Excursion>>({});
@@ -59,7 +62,6 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
         const targetExcursion = excursions.find(e => e.id === targetId);
         if (targetExcursion) {
             handleSelect(targetExcursion);
-            // Limpiar history
             window.history.replaceState({}, document.title);
         }
     }
@@ -89,10 +91,9 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
             (e.scope === ExcursionScope.CLASE && e.targetId === user.classId)
         );
     } 
-    // COORDINACION logic would go here
     
     setExcursions(visible);
-    setCyclesList(db.getCycles()); // use getter for fresh data
+    setCyclesList(db.getCycles()); 
     setClassesList(db.getClasses());
   };
 
@@ -124,7 +125,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   };
 
   const handleCreateNew = () => {
-    if (user?.role === UserRole.TESORERIA) return; // Tesorería no crea
+    if (user?.role === UserRole.TESORERIA) return; 
 
     const newExcursion: Excursion = {
       id: crypto.randomUUID(),
@@ -137,6 +138,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       clothing: ExcursionClothing.UNIFORM,
       transport: TransportType.BUS,
       costBus: 0,
+      costOther: 0,
       costEntry: 0,
       costGlobal: 0,
       estimatedStudents: 0,
@@ -162,7 +164,6 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
 
   const handleDelete = () => {
       if (!selectedExcursion) return;
-      // Permisos de borrado
       if (user?.role === UserRole.TESORERIA) {
           addToast('Tesorería no puede eliminar excursiones', 'error');
           return;
@@ -201,17 +202,12 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   const handleInternalShare = (targetClass: ClassGroup) => {
       if (!selectedExcursion) return;
 
-      // 1. Crear copia
       const sharedExcursion: Excursion = {
           ...selectedExcursion,
           id: crypto.randomUUID(),
-          // Se mantiene el título o se añade marca? "Copia de..."
-          // El usuario pidió que el tutor receptor la edita, así que mejor dejarla limpia.
           title: selectedExcursion.title, 
           scope: ExcursionScope.CLASE,
           targetId: targetClass.id,
-          // IMPORTANTE: El creador pasa a ser el tutor de la clase destino
-          // para que tenga permisos de edición completos.
           creatorId: targetClass.tutorId 
       };
 
@@ -222,11 +218,13 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
 
   const calculateGlobalCost = () => {
       const bus = Number(formData.costBus) || 0;
+      const other = Number(formData.costOther) || 0; // NUEVO: Gastos extra
       const entry = Number(formData.costEntry) || 0;
       const students = Number(formData.estimatedStudents) || 1; 
 
       if (students > 0) {
-        const rawCost = (bus / students) + entry;
+        // Fórmula: ((Bus + Otros) / Estudiantes) + Entrada por niño
+        const rawCost = ((bus + other) / students) + entry;
         const roundedCost = Math.ceil(rawCost); 
         if (roundedCost !== formData.costGlobal) {
             setFormData(prev => ({ ...prev, costGlobal: roundedCost }));
@@ -234,12 +232,12 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       }
   };
 
-  // Auto calc on treasury edit
+  // Auto calc on treasury edit or creation
   useEffect(() => {
-    if (activeTab === 'budget' && isEditing) {
+    if ((activeTab === 'budget' && isEditing) || (activeTab === 'budget' && user?.role === UserRole.TUTOR)) {
         calculateGlobalCost();
     }
-  }, [formData.costBus, formData.costEntry, formData.estimatedStudents]);
+  }, [formData.costBus, formData.costOther, formData.costEntry, formData.estimatedStudents]);
 
   const handleSave = () => {
     if (!formData.title || !formData.dateStart) {
@@ -250,6 +248,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
     const excursionToSave = {
         ...formData,
         costBus: Number(formData.costBus),
+        costOther: Number(formData.costOther),
         costEntry: Number(formData.costEntry),
         costGlobal: Number(formData.costGlobal),
         estimatedStudents: Number(formData.estimatedStudents)
@@ -267,7 +266,6 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       loadData();
       setIsEditing(false);
       
-      // Hack to refresh selected
       setTimeout(() => {
          const updated = db.getExcursions().find(e => e.id === excursionToSave.id);
          if (updated) handleSelect(updated);
@@ -276,7 +274,6 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   };
 
   const toggleParticipationStatus = (p: Participation, field: 'authSigned' | 'paid' | 'attended') => {
-    // REGLA: Tesorería no toca esto (solo lectura en informes)
     if (user?.role === UserRole.TESORERIA) return;
 
     const updated = { ...p, [field]: !p[field] };
@@ -289,6 +286,91 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
     }
     db.updateParticipation(updated);
     setParticipants(prev => prev.map(item => item.id === p.id ? updated : item));
+  };
+
+  // --- REPORT GENERATION LOGIC ---
+
+  const handleGenerateAnnualReport = (format: 'pdf' | 'csv') => {
+    // Definir rango fechas curso escolar
+    const startDate = new Date(reportYear, 8, 1); // 1 Septiembre del año seleccionado
+    const endDate = new Date(reportYear + 1, 5, 30); // 30 Junio del año siguiente
+
+    // Filtrar Excursiones
+    const filteredExcursions = excursions.filter(ex => {
+        const d = new Date(ex.dateStart);
+        return d >= startDate && d <= endDate;
+    }).sort((a, b) => new Date(a.dateStart).getTime() - new Date(b.dateStart).getTime());
+
+    if (filteredExcursions.length === 0) {
+        addToast('No hay excursiones en ese periodo', 'info');
+        return;
+    }
+
+    const reportData = filteredExcursions.map(ex => {
+        const parts = db.getParticipations().filter(p => p.excursionId === ex.id);
+        const collected = parts.filter(p => p.paid).reduce((sum, p) => sum + p.amountPaid, 0);
+        // Coste Real = Bus + Otros + (Entradas * Asistentes reales o estimados si aun no ha ocurrido)
+        // Usamos estimados para el coste teórico si no ha pasado, o asistentes reales si ya hay datos
+        const entryCount = parts.filter(p => p.attended).length || parts.filter(p => p.paid).length;
+        const totalCost = (ex.costBus || 0) + (ex.costOther || 0) + ((ex.costEntry || 0) * entryCount);
+        
+        return {
+            fecha: new Date(ex.dateStart).toLocaleDateString(),
+            titulo: ex.title,
+            destino: ex.destination,
+            curso: getScopeLabel(ex.scope, ex.targetId),
+            bus: (ex.costBus || 0).toFixed(2),
+            otros: (ex.costOther || 0).toFixed(2),
+            entrada: (ex.costEntry || 0).toFixed(2),
+            precioAlumno: ex.costGlobal.toFixed(2),
+            recaudado: collected.toFixed(2),
+            costeTotal: totalCost.toFixed(2),
+            balance: (collected - totalCost).toFixed(2)
+        };
+    });
+
+    if (format === 'pdf') {
+        const doc = new jsPDF('l', 'mm', 'a4'); // Landscape
+        doc.text(`Informe Anual de Excursiones - Curso ${reportYear}/${reportYear + 1}`, 14, 15);
+        doc.setFontSize(10);
+        doc.text("Generado por SchoolTripManager Pro", 14, 22);
+
+        autoTable(doc, {
+            startY: 25,
+            head: [['Fecha', 'Título', 'Destino', 'Grupo', 'Bus', 'Otros', 'Entrada', 'P.Alumno', 'Ingresos', 'Gastos', 'Balance']],
+            body: reportData.map(r => Object.values(r)),
+            styles: { fontSize: 8 },
+            headStyles: { fillColor: [41, 128, 185] },
+        });
+
+        // Totales al final
+        const totalIngresos = reportData.reduce((sum, r) => sum + parseFloat(r.recaudado), 0);
+        const totalGastos = reportData.reduce((sum, r) => sum + parseFloat(r.costeTotal), 0);
+        
+        doc.setFontSize(11);
+        doc.text(`TOTAL INGRESOS: ${totalIngresos.toFixed(2)}€`, 14, (doc as any).lastAutoTable.finalY + 10);
+        doc.text(`TOTAL GASTOS: ${totalGastos.toFixed(2)}€`, 100, (doc as any).lastAutoTable.finalY + 10);
+        doc.text(`BALANCE FINAL: ${(totalIngresos - totalGastos).toFixed(2)}€`, 200, (doc as any).lastAutoTable.finalY + 10);
+
+        doc.save(`Informe_Excursiones_${reportYear}-${reportYear+1}.pdf`);
+    } else {
+        // CSV Export
+        const headers = ['Fecha', 'Título', 'Destino', 'Grupo', 'Coste Bus', 'Otros Gastos', 'Coste Entrada', 'Precio Alumno', 'Ingresos', 'Gastos Totales', 'Balance'];
+        const csvContent = [
+            headers.join(';'),
+            ...reportData.map(r => Object.values(r).join(';'))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Informe_Excursiones_${reportYear}-${reportYear+1}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+    setIsReportModalOpen(false);
   };
 
   const generatePDF = () => {
@@ -322,10 +404,11 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       doc.text(`Excursión: ${selectedExcursion.title}`, 14, 30);
       
       const collected = participants.filter(p => p.paid).reduce((acc, p) => acc + p.amountPaid, 0);
-      const realCost = selectedExcursion.costBus + (participants.filter(p => p.attended).length * selectedExcursion.costEntry);
+      const entryCount = participants.filter(p => p.attended).length || participants.filter(p => p.paid).length;
+      const realCost = (selectedExcursion.costBus || 0) + (selectedExcursion.costOther || 0) + (entryCount * selectedExcursion.costEntry);
       
       doc.text(`Total Recaudado: ${collected}€`, 14, 40);
-      doc.text(`Coste Real (Bus+Entradas): ${realCost}€`, 14, 50);
+      doc.text(`Gastos (Bus ${selectedExcursion.costBus} + Otros ${selectedExcursion.costOther || 0} + Entradas): ${realCost}€`, 14, 50);
       doc.text(`Balance: ${collected - realCost}€`, 14, 60);
 
       const tableData = participants.map(p => [
@@ -348,7 +431,6 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       doc.text(`Actividad: ${selectedExcursion.title}`, 14, 30);
       doc.text(`Fecha: ${dateStr} - Destino: ${selectedExcursion.destination}`, 14, 36);
 
-      // Agrupar por clases
       const participantsByClass: Record<string, typeof participants> = {};
       
       participants.forEach(p => {
@@ -363,14 +445,11 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       });
 
       let currentY = 45;
-
-      // Ordenar claves de clase
       const classKeys = Object.keys(participantsByClass).sort();
 
       classKeys.forEach(className => {
           const classParts = participantsByClass[className];
           
-          // Add page check roughly
           if (currentY > 250) {
               doc.addPage();
               currentY = 20;
@@ -409,15 +488,12 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       doc.save(`control_asistencia_${selectedExcursion.title.replace(/\s+/g, '_')}.pdf`);
   };
 
-  // Helper para deshabilitar campos según rol
   const isFieldDisabled = (fieldName: string) => {
-      if (user?.role === UserRole.DIRECCION) return false; // Dios
+      if (user?.role === UserRole.DIRECCION) return false; 
       if (user?.role === UserRole.TESORERIA) {
-          // Tesorería SOLO edita costes
-          return !['costBus', 'costEntry', 'estimatedStudents', 'costGlobal'].includes(fieldName);
+          return !['costBus', 'costOther', 'costEntry', 'estimatedStudents', 'costGlobal'].includes(fieldName);
       }
       if (user?.role === UserRole.TUTOR) {
-          // Tutor solo edita si es creador
           if (selectedExcursion?.creatorId !== user.id) return true;
           return false;
       }
@@ -427,6 +503,56 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   return (
     <div className="flex h-[calc(100vh-100px)] gap-6 relative">
       
+      {/* --- MODAL INFORME ANUAL --- */}
+      {isReportModalOpen && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 rounded-xl backdrop-blur-sm">
+              <div className="bg-white w-96 rounded-xl shadow-2xl p-6">
+                  <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                      <FileBarChart className="text-blue-600"/> Informe Anual Global
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                      Generar informe de todas las excursiones del curso escolar seleccionado (1 Sept - 30 Junio).
+                  </p>
+                  
+                  <div className="mb-6">
+                      <label className="label-sm">Año de Inicio del Curso</label>
+                      <input 
+                        type="number" 
+                        className="input-field" 
+                        value={reportYear} 
+                        onChange={e => setReportYear(parseInt(e.target.value))}
+                        placeholder="Ej: 2024 (para curso 24/25)"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">
+                          Periodo: 1 Sept {reportYear} - 30 Junio {reportYear + 1}
+                      </p>
+                  </div>
+
+                  <div className="flex gap-2">
+                      <button 
+                        onClick={() => handleGenerateAnnualReport('pdf')}
+                        className="flex-1 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition flex items-center justify-center gap-2"
+                      >
+                          <Printer size={16}/> PDF
+                      </button>
+                      <button 
+                        onClick={() => handleGenerateAnnualReport('csv')}
+                        className="flex-1 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2"
+                      >
+                          <FileSpreadsheet size={16}/> Excel
+                      </button>
+                  </div>
+                  
+                  <button 
+                    onClick={() => setIsReportModalOpen(false)}
+                    className="w-full mt-3 py-2 text-gray-500 hover:bg-gray-100 rounded-lg transition"
+                  >
+                      Cancelar
+                  </button>
+              </div>
+          </div>
+      )}
+
       {/* --- MODAL COMPARTIR --- */}
       {isShareModalOpen && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 rounded-xl backdrop-blur-sm">
@@ -440,7 +566,6 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                   
                   <div className="space-y-2 max-h-60 overflow-y-auto mb-4">
                       {classesList
-                        // No mostrar mi propia clase si soy tutor
                         .filter(c => user?.role === UserRole.DIRECCION || (user?.role === UserRole.TUTOR && c.id !== user.classId))
                         .map(cls => (
                             <button 
@@ -472,11 +597,18 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
           <h2 className="font-bold text-gray-700">
              {mode === 'treasury' ? 'Tesorería' : 'Excursiones'}
           </h2>
-          {mode !== 'treasury' && user?.role !== UserRole.TESORERIA && (
-            <button onClick={handleCreateNew} className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-sm" title="Crear Nueva">
-              <Plus size={18} />
-            </button>
-          )}
+          <div className="flex gap-1">
+             {(user?.role === UserRole.DIRECCION || user?.role === UserRole.TESORERIA) && (
+                <button onClick={() => setIsReportModalOpen(true)} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition" title="Informe Anual">
+                    <FileBarChart size={18} />
+                </button>
+             )}
+             {mode !== 'treasury' && user?.role !== UserRole.TESORERIA && (
+                <button onClick={handleCreateNew} className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-sm" title="Crear Nueva">
+                  <Plus size={18} />
+                </button>
+             )}
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
           {excursions.map(ex => (
@@ -513,7 +645,6 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                    )}
                </div>
                <div className="flex gap-2">
-                 {/* Logic Buttons */}
                  {!isEditing && user?.role === UserRole.TUTOR && selectedExcursion.creatorId !== user.id && (
                      <button onClick={handleDuplicateToClass} className="flex items-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm shadow-sm">
                          <Copy size={16}/> Duplicar a mi clase
@@ -533,14 +664,12 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                    </>
                  ) : (
                    <>
-                    {/* Botón de COMPARTIR (Nuevo) */}
                     {(user?.role === UserRole.TUTOR || user?.role === UserRole.DIRECCION) && (
                         <button onClick={() => setIsShareModalOpen(true)} className="flex items-center gap-2 px-3 py-2 bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 shadow-sm text-sm" title="Compartir Excursión">
                              <Share2 size={18} /> Compartir
                         </button>
                     )}
 
-                    {/* Botón de informe para Dirección */}
                     {user?.role === UserRole.DIRECCION && (
                         <button onClick={generateDirectorReport} className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm text-sm" title="Listado del Día">
                              <FileSpreadsheet size={18} /> Listado Control
@@ -558,18 +687,18 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                </div>
             </div>
 
-            {/* Tabs */}
+            {/* Tabs - Ahora visible para Tutor */}
             {!isEditing && (
                 <div className="flex border-b">
                     <button onClick={() => setActiveTab('details')} className={`px-4 py-2 text-sm font-medium ${activeTab === 'details' ? 'text-blue-600 border-b-2' : 'text-gray-500'}`}>Detalles</button>
-                    {(user?.role === UserRole.DIRECCION || user?.role === UserRole.TESORERIA) && (
+                    {(user?.role === UserRole.DIRECCION || user?.role === UserRole.TESORERIA || user?.role === UserRole.TUTOR) && (
                         <button onClick={() => setActiveTab('budget')} className={`px-4 py-2 text-sm font-medium ${activeTab === 'budget' ? 'text-blue-600 border-b-2' : 'text-gray-500'}`}>Presupuesto</button>
                     )}
                 </div>
             )}
 
             <div className="flex-1 overflow-y-auto p-6">
-              {/* BUDGET VIEW */}
+              {/* BUDGET VIEW - Ahora disponible para Tutor */}
               {(activeTab === 'budget' || (isEditing && user?.role === UserRole.TESORERIA)) && (
                    <div className="max-w-lg mx-auto bg-blue-50 p-6 rounded-xl border border-blue-100 shadow-sm">
                         <h4 className="font-semibold text-blue-900 mb-6 flex items-center gap-2"><Calculator/> Datos Económicos</h4>
@@ -579,16 +708,38 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                 <input type="number" disabled={isFieldDisabled('costBus')} className="input-field" value={formData.costBus} onChange={e => setFormData({...formData, costBus: Number(e.target.value)})} />
                             </div>
                             <div>
+                                <label className="label-sm">Otros Gastos (Total)</label>
+                                <input 
+                                    type="number" 
+                                    disabled={isFieldDisabled('costOther')} 
+                                    className="input-field" 
+                                    value={formData.costOther || 0} 
+                                    onChange={e => setFormData({...formData, costOther: Number(e.target.value)})} 
+                                    placeholder="Parking, material..."
+                                />
+                            </div>
+                            <div>
                                 <label className="label-sm">Coste Entrada (Unitario)</label>
                                 <input type="number" disabled={isFieldDisabled('costEntry')} className="input-field" value={formData.costEntry} onChange={e => setFormData({...formData, costEntry: Number(e.target.value)})} />
                             </div>
+                            <div>
+                                <label className="label-sm">Alumnos Estimados</label>
+                                <input type="number" disabled={isFieldDisabled('estimatedStudents')} className="input-field" value={formData.estimatedStudents} onChange={e => setFormData({...formData, estimatedStudents: Number(e.target.value)})} />
+                            </div>
                         </div>
-                        <div className="mb-4">
-                            <label className="label-sm">Alumnos Estimados (Divisor)</label>
-                            <input type="number" disabled={isFieldDisabled('estimatedStudents')} className="input-field" value={formData.estimatedStudents} onChange={e => setFormData({...formData, estimatedStudents: Number(e.target.value)})} />
+                        
+                        {/* Visualización del Cálculo Final */}
+                        <div className="bg-white p-4 rounded-lg border border-blue-200 mb-4 text-sm text-gray-600 shadow-inner">
+                            <p className="font-medium text-blue-900 mb-2 flex items-center gap-1"><Info size={14}/> Desglose del Precio:</p>
+                            <div className="space-y-1 pl-2 border-l-2 border-blue-200">
+                                <p>Gastos Comunes (Bus + Otros): <span className="font-mono">{(formData.costBus || 0) + (formData.costOther || 0)}€</span></p>
+                                <p>Coste por alumno (Comunes / {formData.estimatedStudents}): <span className="font-mono">{(formData.estimatedStudents && formData.estimatedStudents > 0) ? (( (formData.costBus||0) + (formData.costOther||0) ) / formData.estimatedStudents).toFixed(2) : 0}€</span></p>
+                                <p>+ Entrada: <span className="font-mono">{formData.costEntry}€</span></p>
+                            </div>
                         </div>
+
                         <div className="pt-4 border-t border-blue-200">
-                             <label className="label-sm">Precio Final Alumno</label>
+                             <label className="label-sm">Precio Final Alumno (Redondeado)</label>
                              <input type="number" disabled={isFieldDisabled('costGlobal')} className="w-full text-2xl font-bold text-blue-800 p-2 border rounded" value={formData.costGlobal} onChange={e => setFormData({...formData, costGlobal: Number(e.target.value)})} />
                         </div>
                         {isEditing && <p className="text-xs text-gray-500 mt-2">* Tesorería puede modificar estos valores.</p>}
@@ -619,7 +770,6 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                 <input type="datetime-local" className="input-field" value={formData.dateEnd?.slice(0, 16)} onChange={e => setFormData({...formData, dateEnd: e.target.value})} disabled={isFieldDisabled('dateEnd')} />
                              </div>
 
-                             {/* NUEVOS CAMPOS: Configuración Logística */}
                              <div>
                                 <label className="label-sm">Vestimenta</label>
                                 <select className="input-field" value={formData.clothing} onChange={e => setFormData({...formData, clothing: e.target.value as ExcursionClothing})} disabled={isFieldDisabled('clothing')}>
