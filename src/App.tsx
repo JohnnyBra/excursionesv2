@@ -9,9 +9,6 @@ import { UserManager } from './components/UserManager';
 import { ToastProvider, useToast } from './components/ui/Toast';
 import { Lock, User as UserIcon, Save, Loader, ShieldCheck } from 'lucide-react';
 
-// Fallback image in base64 (Un escudo simple en azul) para evitar peticiones de red fallidas
-const FALLBACK_LOGO = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='%232563eb'%3E%3Cpath d='M50 0L0 20v30c0 30 50 50 50 50s50-20 50-50V20L50 0zm0 15c5 0 10 5 10 10s-5 10-10 10-10-5-10-10 5-10 10-10z' fill='white'/%3E%3C/svg%3E";
-
 // -- Auth Context --
 interface AuthContextType {
   user: User | null;
@@ -50,14 +47,7 @@ const Login = () => {
           <img 
             src="logo.png" 
             alt="Logo Hispanidad" 
-            className="h-20 w-auto mb-4 object-contain" 
-            onError={(e) => {
-                const target = e.currentTarget;
-                if (target.src !== FALLBACK_LOGO) {
-                    target.src = FALLBACK_LOGO;
-                    target.onerror = null; // Prevent loop
-                }
-            }} 
+            className="h-24 w-auto mb-4 object-contain drop-shadow-md" 
           />
           <h1 className="text-2xl font-bold text-gray-900">Gestor de Excursiones</h1>
           <p className="text-blue-600 font-medium">Cooperativa de Enseñanza La Hispanidad</p>
