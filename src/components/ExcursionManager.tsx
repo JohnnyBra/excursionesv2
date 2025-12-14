@@ -9,7 +9,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Plus, Save, DollarSign, CheckCircle, 
   Printer, Calendar, MapPin, Calculator, FileText, Copy, Trash2, FileSpreadsheet,
-  Share2, Shirt, Footprints, Bus, Clock, ArrowRight, Info, FileBarChart
+  Share2, Shirt, Footprints, Bus, Clock, ArrowRight, Info, FileBarChart, Edit, X
 } from 'lucide-react';
 
 interface ExcursionManagerProps {
@@ -175,9 +175,9 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
            return;
       }
 
-      if (confirm('¿Estás seguro de borrar esta excursión y todos sus datos?')) {
+      if (confirm('¿ATENCIÓN: Estás seguro de borrar esta excursión y todos sus datos? Esta acción no se puede deshacer.')) {
           db.deleteExcursion(selectedExcursion.id);
-          addToast('Excursión eliminada', 'success');
+          addToast('Excursión eliminada correctamente', 'success');
           setSelectedExcursion(null);
           loadData();
       }
@@ -218,33 +218,39 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       setIsShareModalOpen(false);
   };
 
+  // Lógica de cálculo corregida
   const calculateGlobalCost = () => {
       const bus = Number(formData.costBus) || 0;
       const other = Number(formData.costOther) || 0; 
       const entry = Number(formData.costEntry) || 0;
-      const students = Number(formData.estimatedStudents) || 1; 
+      const students = Number(formData.estimatedStudents) || 0; 
+
+      let newCost = 0;
 
       if (students > 0) {
         // Fórmula: ((Bus + Otros) / Estudiantes) + Entrada por niño
         const rawCost = ((bus + other) / students) + entry;
-        const roundedCost = Math.ceil(rawCost); 
-        if (roundedCost !== formData.costGlobal) {
-            setFormData(prev => ({ ...prev, costGlobal: roundedCost }));
-        }
+        newCost = Math.ceil(rawCost); 
+      }
+      
+      // Actualizar solo si hay cambios para evitar renders infinitos
+      if (newCost !== formData.costGlobal) {
+          setFormData(prev => ({ ...prev, costGlobal: newCost }));
       }
   };
 
-  // Auto calc on treasury edit or creation
+  // Efecto para recalcular automáticamente
   useEffect(() => {
-    if ((activeTab === 'budget' && isEditing) || (activeTab === 'budget' && user?.role === UserRole.TUTOR)) {
+    // Calcular siempre que estemos editando o en la pestaña de presupuesto (incluso si solo estamos mirando)
+    if (activeTab === 'budget' || isEditing) {
         calculateGlobalCost();
     }
   }, [
     formData.costBus, 
     formData.costOther, 
     formData.costEntry, 
-    formData.estimatedStudents, 
-    activeTab, 
+    formData.estimatedStudents,
+    activeTab,
     isEditing
   ]);
 
@@ -670,6 +676,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                    )}
                </div>
                <div className="flex gap-2">
+                 {/* Logic Buttons */}
                  {!isEditing && user?.role === UserRole.TUTOR && selectedExcursion.creatorId !== user.id && (
                      <button onClick={handleDuplicateToClass} className="flex items-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm shadow-sm">
                          <Copy size={16}/> Duplicar a mi clase
@@ -677,35 +684,37 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                  )}
                  
                  {!isEditing && (user?.role === UserRole.DIRECCION || (user?.role === UserRole.TUTOR && selectedExcursion.creatorId === user.id)) && (
-                     <button onClick={handleDelete} className="p-2 text-red-500 hover:bg-red-50 rounded-lg">
+                     <button onClick={handleDelete} className="p-2 text-red-500 hover:bg-red-50 rounded-lg" title="Eliminar Excursión">
                          <Trash2 size={18} />
                      </button>
                  )}
 
                  {isEditing ? (
                    <>
-                    <button onClick={() => { setIsEditing(false); setFormData(selectedExcursion); }} className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm">Cancelar</button>
+                    <button onClick={() => { setIsEditing(false); setFormData(selectedExcursion); }} className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm flex items-center gap-1"><X size={16}/> Cancelar</button>
                     <button onClick={handleSave} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 shadow-sm transition"><Save size={18} /> Guardar</button>
                    </>
                  ) : (
                    <>
+                    {/* Botón de COMPARTIR (Nuevo) */}
                     {(user?.role === UserRole.TUTOR || user?.role === UserRole.DIRECCION) && (
                         <button onClick={() => setIsShareModalOpen(true)} className="flex items-center gap-2 px-3 py-2 bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 shadow-sm text-sm" title="Compartir Excursión">
-                             <Share2 size={18} /> Compartir
+                             <Share2 size={18} />
                         </button>
                     )}
 
+                    {/* Botón de informe para Dirección */}
                     {user?.role === UserRole.DIRECCION && (
                         <button onClick={generateDirectorReport} className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm text-sm" title="Listado del Día">
-                             <FileSpreadsheet size={18} /> Listado Control
+                             <FileSpreadsheet size={18} />
                         </button>
                     )}
 
                     <button onClick={generatePDF} className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 shadow-sm text-sm">
-                      <Printer size={18} /> {user?.role === UserRole.TESORERIA ? 'Informe Econ.' : 'Listado Clase'}
+                      <Printer size={18} /> {user?.role === UserRole.TESORERIA ? 'Inf. Econ.' : 'Listado'}
                     </button>
-                    <button onClick={() => setIsEditing(true)} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm text-sm font-medium">
-                         {user?.role === UserRole.TESORERIA ? 'Editar Costes' : 'Editar'}
+                    <button onClick={() => setIsEditing(true)} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm text-sm font-medium flex items-center gap-2">
+                         <Edit size={16} /> {user?.role === UserRole.TESORERIA ? 'Costes' : 'Editar'}
                     </button>
                    </>
                  )}
@@ -730,7 +739,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                         <div className="grid grid-cols-2 gap-6 mb-4">
                             <div>
                                 <label className="label-sm">Coste Autobús (Total)</label>
-                                <input type="number" disabled={isFieldDisabled('costBus')} className="input-field" value={formData.costBus} onChange={e => setFormData({...formData, costBus: Number(e.target.value)})} />
+                                <input type="number" disabled={isFieldDisabled('costBus')} className="input-field" value={formData.costBus || ''} onChange={e => setFormData({...formData, costBus: Number(e.target.value)})} placeholder="0" />
                             </div>
                             <div>
                                 <label className="label-sm">Otros Gastos (Total)</label>
@@ -738,18 +747,18 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                     type="number" 
                                     disabled={isFieldDisabled('costOther')} 
                                     className="input-field" 
-                                    value={formData.costOther || 0} 
+                                    value={formData.costOther || ''} 
                                     onChange={e => setFormData({...formData, costOther: Number(e.target.value)})} 
                                     placeholder="Parking, material..."
                                 />
                             </div>
                             <div>
                                 <label className="label-sm">Coste Entrada (Unitario)</label>
-                                <input type="number" disabled={isFieldDisabled('costEntry')} className="input-field" value={formData.costEntry} onChange={e => setFormData({...formData, costEntry: Number(e.target.value)})} />
+                                <input type="number" disabled={isFieldDisabled('costEntry')} className="input-field" value={formData.costEntry || ''} onChange={e => setFormData({...formData, costEntry: Number(e.target.value)})} placeholder="0" />
                             </div>
                             <div>
                                 <label className="label-sm">Alumnos Estimados</label>
-                                <input type="number" disabled={isFieldDisabled('estimatedStudents')} className="input-field" value={formData.estimatedStudents} onChange={e => setFormData({...formData, estimatedStudents: Number(e.target.value)})} />
+                                <input type="number" disabled={isFieldDisabled('estimatedStudents')} className="input-field" value={formData.estimatedStudents || ''} onChange={e => setFormData({...formData, estimatedStudents: Number(e.target.value)})} placeholder="0" />
                             </div>
                         </div>
                         
@@ -758,14 +767,14 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                             <p className="font-medium text-blue-900 mb-2 flex items-center gap-1"><Info size={14}/> Desglose del Precio:</p>
                             <div className="space-y-1 pl-2 border-l-2 border-blue-200">
                                 <p>Gastos Comunes (Bus + Otros): <span className="font-mono">{(formData.costBus || 0) + (formData.costOther || 0)}€</span></p>
-                                <p>Coste por alumno (Comunes / {formData.estimatedStudents}): <span className="font-mono">{(formData.estimatedStudents && formData.estimatedStudents > 0) ? (( (formData.costBus||0) + (formData.costOther||0) ) / formData.estimatedStudents).toFixed(2) : 0}€</span></p>
-                                <p>+ Entrada: <span className="font-mono">{formData.costEntry}€</span></p>
+                                <p>Coste por alumno (Comunes / {formData.estimatedStudents || 0}): <span className="font-mono">{(formData.estimatedStudents && formData.estimatedStudents > 0) ? (( (formData.costBus||0) + (formData.costOther||0) ) / formData.estimatedStudents).toFixed(2) : 0}€</span></p>
+                                <p>+ Entrada: <span className="font-mono">{formData.costEntry || 0}€</span></p>
                             </div>
                         </div>
 
                         <div className="pt-4 border-t border-blue-200">
                              <label className="label-sm">Precio Final Alumno (Redondeado)</label>
-                             <input type="number" disabled={isFieldDisabled('costGlobal')} className="w-full text-2xl font-bold text-blue-800 p-2 border rounded" value={formData.costGlobal} onChange={e => setFormData({...formData, costGlobal: Number(e.target.value)})} />
+                             <input type="number" disabled={isFieldDisabled('costGlobal')} className="w-full text-2xl font-bold text-blue-800 p-2 border rounded" value={formData.costGlobal ?? 0} onChange={e => setFormData({...formData, costGlobal: Number(e.target.value)})} />
                         </div>
                         {isEditing && <p className="text-xs text-gray-500 mt-2">* Tesorería puede modificar estos valores.</p>}
                    </div>
@@ -774,7 +783,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
               {/* DETAILS / EDIT VIEW */}
               {activeTab === 'details' && (
                   isEditing && user?.role !== UserRole.TESORERIA ? (
-                    <div className="space-y-4 max-w-3xl mx-auto">
+                    <div className="space-y-4 max-w-3xl mx-auto pb-10">
                         <div className="grid grid-cols-2 gap-4">
                              <div className="col-span-2">
                                 <label className="label-sm">Título</label>
@@ -840,6 +849,17 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                 </div>
                              </div>
                         </div>
+
+                        {/* Botón de Borrar en modo edición (Zona Peligrosa) */}
+                        {!isFieldDisabled('title') && (
+                            <div className="mt-8 pt-6 border-t border-red-100">
+                                <h4 className="text-red-600 font-bold mb-2 flex items-center gap-2"><Trash2 size={18}/> Zona de Peligro</h4>
+                                <p className="text-sm text-gray-500 mb-3">Si la excursión no se va a realizar, puedes eliminarla permanentemente.</p>
+                                <button onClick={handleDelete} className="px-4 py-2 border border-red-200 bg-red-50 text-red-600 rounded hover:bg-red-100 w-full md:w-auto font-medium transition">
+                                    Eliminar Excursión
+                                </button>
+                            </div>
+                        )}
                     </div>
                   ) : activeTab === 'details' && !isEditing ? (
                     <div className="space-y-6">
