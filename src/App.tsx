@@ -44,11 +44,16 @@ const Login = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-white/50 backdrop-blur-sm">
         <div className="text-center mb-8 flex flex-col items-center">
-          {/* Se usa directamente logo.png. Asegúrate de que el archivo esté en la carpeta public/ */}
+          {/* Usamos ruta absoluta /logo.png */}
           <img 
-            src="logo.png" 
+            src="/logo.png" 
             alt="Logo Hispanidad" 
             className="h-24 w-auto mb-4 object-contain drop-shadow-md" 
+            onError={(e) => {
+                console.error("Error cargando logo en Login:", e);
+                // Si falla, ocultamos la imagen rota para que no se vea feo
+                e.currentTarget.style.display = 'none';
+            }}
           />
           <h1 className="text-2xl font-bold text-gray-900">Gestor de Excursiones</h1>
           <p className="text-blue-600 font-medium">Cooperativa de Enseñanza La Hispanidad</p>

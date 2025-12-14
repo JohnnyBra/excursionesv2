@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  base: './', // Permite que la app funcione en subdirectorios
+  // base: './', // ELIMINADO: Usar ruta absoluta por defecto para evitar problemas con assets públicos
   server: {
     port: 3006,
     strictPort: true,
