@@ -51,18 +51,30 @@ export const UserManager: React.FC = () => {
         }
         const userToSave = { ...editingUser, password: editingUser.password || '123' } as User;
         
-        // Prevent deleting/locking other admins if not strict logic (Simplified for demo)
-        
+        let needsReload = false;
+
         if (userToSave.id) {
             db.updateUser(userToSave);
             addToast('Usuario actualizado', 'success');
+            
+            // SI ESTAMOS EDITANDO AL USUARIO ACTUAL, ACTUALIZAMOS SESIÓN
+            if (userToSave.id === user.id) {
+                localStorage.setItem('auth_user', JSON.stringify(userToSave));
+                needsReload = true;
+            }
         } else {
             userToSave.id = crypto.randomUUID();
             db.addUser(userToSave);
             addToast('Usuario creado', 'success');
         }
+        
         setEditingUser(null);
         refreshData();
+
+        if (needsReload) {
+            // Forzar recarga para que el nombre cambie en la barra lateral
+            window.location.reload();
+        }
     };
 
     const handleDeleteUser = (id: string) => {
