@@ -515,6 +515,8 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   };
 
   const isFieldDisabled = (fieldName: string) => {
+      if (!isEditing) return true; // Disabled unless in edit mode
+
       if (user?.role === UserRole.DIRECCION) return false; 
       if (user?.role === UserRole.TESORERIA) {
           return !['costBus', 'costOther', 'costEntry', 'estimatedStudents', 'costGlobal'].includes(fieldName);
@@ -524,6 +526,13 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
           return false;
       }
       return true;
+  };
+
+  // Check if user has permission to edit budget at all
+  const canEditBudget = () => {
+      if (user?.role === UserRole.DIRECCION || user?.role === UserRole.TESORERIA) return true;
+      if (user?.role === UserRole.TUTOR && selectedExcursion?.creatorId === user.id) return true;
+      return false;
   };
 
   return (
@@ -784,6 +793,27 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                              </div>
                         </div>
                         {isEditing && <p className="text-xs text-gray-500 mt-2">* Tesorería puede modificar estos valores.</p>}
+
+                        {/* Botones Explícitos para Presupuesto */}
+                        {canEditBudget() && (
+                            <div className="mt-6 flex justify-end gap-2 pt-4 border-t border-gray-100">
+                                {!isEditing ? (
+                                    <button 
+                                        onClick={() => setIsEditing(true)} 
+                                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                                    >
+                                        <Edit size={16} /> Editar Presupuesto
+                                    </button>
+                                ) : (
+                                    <button 
+                                        onClick={handleSave} 
+                                        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                                    >
+                                        <Save size={16} /> Guardar Presupuesto
+                                    </button>
+                                )}
+                            </div>
+                        )}
                    </div>
               )}
 
