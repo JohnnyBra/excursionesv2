@@ -9,10 +9,6 @@ import { UserManager } from './components/UserManager';
 import { ToastProvider, useToast } from './components/ui/Toast';
 import { Lock, User as UserIcon, Save, Loader, ShieldCheck } from 'lucide-react';
 
-// -- Constants --
-const LOGO_URL = "/logo.png";
-const FALLBACK_LOGO = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='b' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%232563eb'/%3E%3Cstop offset='100%25' style='stop-color:%231e40af'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M50 5 L15 20 V45 C15 70 50 95 50 95 C50 95 85 70 85 45 V20 L50 5 Z' fill='url(%23b)' stroke='%231e3a8a' stroke-width='2'/%3E%3Cpath d='M30 35 C30 35 40 40 50 35 C60 40 70 35 70 35 V60 C70 60 60 65 50 60 C40 65 30 60 30 60 V35 Z' fill='%23ffffff' opacity='0.9'/%3E%3Cline x1='50' y1='35' x2='50' y2='60' stroke='%232563eb' stroke-width='2'/%3E%3Ctext x='50' y='80' font-family='Arial' font-size='12' fill='white' text-anchor='middle' font-weight='bold'%3EEST. 2024%3C/text%3E%3Cpath d='M50 20 L53 28 L62 28 L55 34 L57 42 L50 37 L43 42 L45 34 L38 28 L47 28 Z' fill='%23fbbf24'/%3E%3C/svg%3E";
-
 // -- Auth Context --
 interface AuthContextType {
   user: User | null;
@@ -48,9 +44,9 @@ const Login = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-white/50 backdrop-blur-sm">
         <div className="text-center mb-8 flex flex-col items-center">
+          {/* Se usa directamente logo.png. Asegúrate de que el archivo esté en la carpeta public/ */}
           <img 
-            src={LOGO_URL} 
-            onError={(e) => e.currentTarget.src = FALLBACK_LOGO}
+            src="logo.png" 
             alt="Logo Hispanidad" 
             className="h-24 w-auto mb-4 object-contain drop-shadow-md" 
           />
