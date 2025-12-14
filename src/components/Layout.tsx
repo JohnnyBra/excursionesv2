@@ -7,9 +7,6 @@ import {
   Wallet, Settings, Menu 
 } from 'lucide-react';
 
-const LOGO_URL = "/logo.png";
-const FALLBACK_LOGO = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='b' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%232563eb'/%3E%3Cstop offset='100%25' style='stop-color:%231e40af'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M50 5 L15 20 V45 C15 70 50 95 50 95 C50 95 85 70 85 45 V20 L50 5 Z' fill='url(%23b)' stroke='%231e3a8a' stroke-width='2'/%3E%3Cpath d='M30 35 C30 35 40 40 50 35 C60 40 70 35 70 35 V60 C70 60 60 65 50 60 C40 65 30 60 30 60 V35 Z' fill='%23ffffff' opacity='0.9'/%3E%3Cline x1='50' y1='35' x2='50' y2='60' stroke='%232563eb' stroke-width='2'/%3E%3Ctext x='50' y='80' font-family='Arial' font-size='12' fill='white' text-anchor='middle' font-weight='bold'%3EEST. 2024%3C/text%3E%3Cpath d='M50 20 L53 28 L62 28 L55 34 L57 42 L50 37 L43 42 L45 34 L38 28 L47 28 Z' fill='%23fbbf24'/%3E%3C/svg%3E";
-
 interface LayoutProps {
   children: React.ReactNode;
 }
@@ -44,8 +41,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       <div className="md:hidden bg-white p-4 flex justify-between items-center shadow-sm sticky top-0 z-50">
         <div className="flex items-center gap-2">
             <img 
-                src={LOGO_URL}
-                onError={(e) => e.currentTarget.src = FALLBACK_LOGO}
+                src="logo.png" 
                 alt="Logo" 
                 className="h-8 w-auto" 
             />
@@ -64,8 +60,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       `}>
         <div className="p-6 flex flex-col items-center text-center border-b border-gray-100">
           <img 
-            src={LOGO_URL} 
-            onError={(e) => e.currentTarget.src = FALLBACK_LOGO}
+            src="logo.png" 
             alt="Logo Hispanidad" 
             className="h-20 w-auto mb-3 object-contain drop-shadow-sm" 
           />
