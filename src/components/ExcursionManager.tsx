@@ -9,7 +9,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Plus, Save, DollarSign, CheckCircle, 
   Printer, Calendar, MapPin, Calculator, FileText, Copy, Trash2, FileSpreadsheet,
-  Share2, Shirt, Footprints, Bus, Clock, ArrowRight, Info, FileBarChart, Edit, X
+  Share2, Shirt, Footprints, Bus, Clock, ArrowRight, Info, FileBarChart, Edit, X, ArrowDownCircle
 } from 'lucide-react';
 
 interface ExcursionManagerProps {
@@ -36,6 +36,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
 
   // Form State
   const [formData, setFormData] = useState<Partial<Excursion>>({});
+  const [calculatedPrice, setCalculatedPrice] = useState(0); // Nuevo estado para previsualización
   
   // Data for Selectors
   const [cyclesList, setCyclesList] = useState(db.cycles);
@@ -150,6 +151,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
     };
     setSelectedExcursion(newExcursion);
     setFormData(newExcursion);
+    setCalculatedPrice(0);
     setParticipants([]); 
     setIsEditing(true);
     setActiveTab('details');
@@ -158,6 +160,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   const handleSelect = (ex: Excursion) => {
     setSelectedExcursion(ex);
     setFormData(ex);
+    setCalculatedPrice(ex.costGlobal); // Init calculated with current real price
     const allParts = db.getParticipations();
     setParticipants(allParts.filter(p => p.excursionId === ex.id));
     setIsEditing(false);
@@ -218,30 +221,37 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       setIsShareModalOpen(false);
   };
 
-  // Lógica de cálculo corregida
+  // Lógica de cálculo (Solo previsualización)
   const calculateGlobalCost = () => {
       const bus = Number(formData.costBus) || 0;
       const other = Number(formData.costOther) || 0; 
       const entry = Number(formData.costEntry) || 0;
       const students = Number(formData.estimatedStudents) || 0; 
 
-      let newCost = 0;
-
       if (students > 0) {
         // Fórmula: ((Bus + Otros) / Estudiantes) + Entrada por niño
         const rawCost = ((bus + other) / students) + entry;
-        newCost = Math.ceil(rawCost); 
-      }
-      
-      // Actualizar solo si hay cambios para evitar renders infinitos
-      if (newCost !== formData.costGlobal) {
-          setFormData(prev => ({ ...prev, costGlobal: newCost }));
+        setCalculatedPrice(Math.ceil(rawCost));
+      } else {
+        setCalculatedPrice(0);
       }
   };
 
-  // Efecto para recalcular automáticamente
+  // Importar el precio calculado a los datos reales
+  const applyCalculatedPrice = () => {
+      if (calculatedPrice <= 0) {
+          addToast('El precio calculado es 0 o inválido', 'error');
+          return;
+      }
+      
+      if (confirm(`¿Quieres establecer el precio oficial de la excursión a ${calculatedPrice}€ por alumno?`)) {
+          setFormData(prev => ({ ...prev, costGlobal: calculatedPrice }));
+          addToast('Precio aplicado. Recuerda guardar los cambios.', 'info');
+      }
+  };
+
+  // Efecto para recalcular la previsualización
   useEffect(() => {
-    // Calcular siempre que estemos editando o en la pestaña de presupuesto (incluso si solo estamos mirando)
     if (activeTab === 'budget' || isEditing) {
         calculateGlobalCost();
     }
@@ -770,11 +780,31 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                 <p>Coste por alumno (Comunes / {formData.estimatedStudents || 0}): <span className="font-mono">{(formData.estimatedStudents && formData.estimatedStudents > 0) ? (( (formData.costBus||0) + (formData.costOther||0) ) / formData.estimatedStudents).toFixed(2) : 0}€</span></p>
                                 <p>+ Entrada: <span className="font-mono">{formData.costEntry || 0}€</span></p>
                             </div>
+                            <div className="mt-3 pt-2 border-t flex justify-between items-center">
+                                <span className="font-bold text-gray-700">Precio Calculado (Previsualización):</span>
+                                <span className="text-xl font-bold text-blue-600">{calculatedPrice}€</span>
+                            </div>
                         </div>
 
+                        {/* Botón para aplicar el precio calculado */}
+                        {isEditing && (
+                            <button 
+                                onClick={applyCalculatedPrice}
+                                className="w-full mb-4 py-2 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg flex items-center justify-center gap-2 font-medium transition"
+                            >
+                                <ArrowDownCircle size={18} /> Aplicar este precio
+                            </button>
+                        )}
+
                         <div className="pt-4 border-t border-blue-200">
-                             <label className="label-sm">Precio Final Alumno (Redondeado)</label>
-                             <input type="number" disabled={isFieldDisabled('costGlobal')} className="w-full text-2xl font-bold text-blue-800 p-2 border rounded" value={formData.costGlobal ?? 0} onChange={e => setFormData({...formData, costGlobal: Number(e.target.value)})} />
+                             <label className="label-sm">Precio Final Alumno (Oficial)</label>
+                             <input 
+                                type="number" 
+                                disabled={isFieldDisabled('costGlobal')} 
+                                className="w-full text-2xl font-bold text-green-700 p-2 border border-green-300 bg-green-50 rounded" 
+                                value={formData.costGlobal ?? 0} 
+                                onChange={e => setFormData({...formData, costGlobal: Number(e.target.value)})} 
+                             />
                         </div>
                         {isEditing && <p className="text-xs text-gray-500 mt-2">* Tesorería puede modificar estos valores.</p>}
                    </div>
