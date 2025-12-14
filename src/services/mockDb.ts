@@ -134,11 +134,20 @@ export const db = {
   importStudentsCSV: (csvContent: string, targetClassId: string) => {
     const lines = csvContent.split(/\r?\n/);
     let count = 0;
+    
+    // Función helper para limpiar comillas (e.g. "Nombre" -> Nombre)
+    const cleanStr = (str: string) => str.trim().replace(/['"]/g, '');
+
     lines.forEach(line => {
+      // Ignorar líneas vacías
+      if (!line.trim()) return;
+
       const parts = line.split(',');
       if (parts.length >= 2) {
-         const surnames = parts[0].trim();
-         const name = parts[1].trim();
+         // Asumimos formato: Apellidos, Nombre
+         const surnames = cleanStr(parts[0]);
+         const name = cleanStr(parts[1]);
+         
          if (name && surnames) {
             const newStudent = {
                 id: crypto.randomUUID(),
