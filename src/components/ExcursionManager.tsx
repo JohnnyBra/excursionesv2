@@ -234,9 +234,10 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       }
       
       // Actualizamos automáticamente el costGlobal con el sugerido
-      // IMPORTANTE: Solo si los valores base cambian. Si el usuario edita costGlobal manualmente,
-      // no lo sobrescribimos AQUÍ, a menos que cambie uno de los inputs de la dependencia.
+      // IMPORTANTE: Solo si los valores base cambian y hay un nuevo coste calculado.
+      // Esto evita bucles infinitos y respeta la edición manual si no cambian los parámetros.
       setFormData(prev => {
+          // Solo actualizamos si el nuevo coste calculado es diferente al actual
           if (prev.costGlobal !== newCost) {
               return { ...prev, costGlobal: newCost };
           }
@@ -248,8 +249,6 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
     formData.costOther, 
     formData.costEntry, 
     formData.estimatedStudents
-    // NOTA: No incluimos formData.costGlobal en dependencias para evitar loop infinito
-    // y permitir edición manual si no cambian los costes.
   ]);
 
   const handleSave = () => {
@@ -260,29 +259,30 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
 
     const excursionToSave = {
         ...formData,
-        costBus: Number(formData.costBus),
-        costOther: Number(formData.costOther),
-        costEntry: Number(formData.costEntry),
-        costGlobal: Number(formData.costGlobal), // Guarda lo que haya en el input final
-        estimatedStudents: Number(formData.estimatedStudents)
+        costBus: Number(formData.costBus) || 0,
+        costOther: Number(formData.costOther) || 0,
+        costEntry: Number(formData.costEntry) || 0,
+        costGlobal: Number(formData.costGlobal) || 0, // CRÍTICO: Asegurar que se guarda el valor actual del input
+        estimatedStudents: Number(formData.estimatedStudents) || 0
     } as Excursion;
 
     if (isEditing || activeTab === 'budget') {
       const exists = excursions.find(e => e.id === formData.id);
       if (exists) {
         db.updateExcursion(excursionToSave);
-        addToast('Guardado', 'success');
+        addToast('Guardado correctamente', 'success');
       } else {
         db.addExcursion(excursionToSave);
-        addToast('Creado', 'success');
+        addToast('Creada correctamente', 'success');
       }
-      loadData();
+
+      // CRÍTICO: Actualización inmediata del estado visual para reflejar cambios (precio) sin esperar recarga
+      setSelectedExcursion(excursionToSave);
+      setFormData(excursionToSave);
       setIsEditing(false);
       
-      setTimeout(() => {
-         const updated = db.getExcursions().find(e => e.id === excursionToSave.id);
-         if (updated) handleSelect(updated);
-      }, 100);
+      // Recargar lista lateral en segundo plano
+      loadData();
     }
   };
 
