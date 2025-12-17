@@ -6,11 +6,11 @@ import { useToast } from './ui/Toast';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useDataSync } from '../hooks/useDataSync'; // IMPORTANTE: Nuevo hook
+import { useDataSync } from '../hooks/useDataSync';
 import { 
   Plus, Save, DollarSign, CheckCircle, 
   Printer, Calendar, MapPin, Calculator, FileText, Copy, Trash2, FileSpreadsheet,
-  Share2, Shirt, Footprints, Bus, Clock, ArrowRight, Info, FileBarChart, Edit, X
+  Share2, Shirt, Footprints, Bus, Clock, ArrowRight, FileBarChart, Edit, X
 } from 'lucide-react';
 
 interface ExcursionManagerProps {
@@ -24,7 +24,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   const navigate = useNavigate();
   
   // HOOK DE SINCRONIZACIÓN
-  const dbVersion = useDataSync(); // Esto se actualizará cuando llegue un evento de Socket
+  const dbVersion = useDataSync();
 
   const [excursions, setExcursions] = useState<Excursion[]>([]);
   const [selectedExcursion, setSelectedExcursion] = useState<Excursion | null>(null);
@@ -53,7 +53,6 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   const [isExcursionDayOrPast, setIsExcursionDayOrPast] = useState(false);
 
   // EFECTO PRINCIPAL DE CARGA DE DATOS
-  // Ahora depende de 'dbVersion', por lo que se recargará automáticamente.
   useEffect(() => {
     loadData();
     const students = db.getStudents();
@@ -61,28 +60,23 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
     students.forEach(s => map[s.id] = s);
     setStudentsMap(map);
     
-    // Si tenemos una excursión seleccionada, refrescamos sus datos también
     if (selectedExcursion) {
-        // Encontrar la versión actualizada de la excursión seleccionada
         const updatedExcursion = db.getExcursions().find(e => e.id === selectedExcursion.id);
         if (updatedExcursion) {
-             // Si no estamos editando, actualizamos la vista
              if (!isEditing) {
                  setSelectedExcursion(updatedExcursion);
                  setFormData(updatedExcursion);
              }
-             // Actualizar participantes siempre
              const allParts = db.getParticipations();
              setParticipants(allParts.filter(p => p.excursionId === updatedExcursion.id));
         } else {
-             // Si la excursión desapareció (alguien la borró), deseleccionar
-             if (!isEditing) { // Solo si no estoy creando una nueva
+             if (!isEditing) { 
                  setSelectedExcursion(null);
                  addToast('La excursión que veías ha sido eliminada por otro usuario', 'info');
              }
         }
     }
-  }, [user, dbVersion]); // Dependencia añadida: dbVersion
+  }, [user, dbVersion]); 
 
   // Selección automática desde Dashboard
   useEffect(() => {
@@ -91,7 +85,6 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
         const targetExcursion = excursions.find(e => e.id === targetId);
         if (targetExcursion) {
             handleSelect(targetExcursion);
-            // Cleanup state by replacing history
             navigate(location.pathname, { replace: true, state: {} });
         }
     }
@@ -109,7 +102,6 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   }, [selectedExcursion]);
 
   const loadData = () => {
-    // Filtrado de Excursiones según ROL
     const all = db.getExcursions();
     let visible = all;
 
@@ -127,7 +119,6 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
     setClassesList(db.getClasses());
   };
 
-  // Helper para mostrar scope legible
   const getScopeLabel = (scope: string, targetId?: string) => {
     if (scope === ExcursionScope.GLOBAL) return 'Global';
     if (scope === ExcursionScope.CICLO) {
@@ -246,7 +237,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       setIsShareModalOpen(false);
   };
 
-  // Efecto para recalcular automáticamente y rellenar el campo
+  // Efecto para recalcular automáticamente
   useEffect(() => {
     if (activeTab === 'budget' || isEditing) {
       const bus = Number(formData.costBus) || 0;
@@ -256,7 +247,6 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       
       let newCost = 0;
       if (students > 0) {
-        // Fórmula: ((Bus + Otros) / Estudiantes) + Entrada por niño
         const rawCost = ((bus + other) / students) + entry;
         newCost = Math.ceil(rawCost);
       }
@@ -303,8 +293,6 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       setSelectedExcursion(excursionToSave);
       setFormData(excursionToSave);
       setIsEditing(false);
-      
-      // La recarga ocurre automáticamente por el socket, pero por si acaso:
       loadData();
     }
   };
@@ -327,8 +315,8 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   // --- REPORT GENERATION LOGIC ---
 
   const handleGenerateAnnualReport = (format: 'pdf' | 'csv') => {
-    const startDate = new Date(reportYear, 8, 1); // 1 Septiembre del año seleccionado
-    const endDate = new Date(reportYear + 1, 5, 30); // 30 Junio del año siguiente
+    const startDate = new Date(reportYear, 8, 1);
+    const endDate = new Date(reportYear + 1, 5, 30);
 
     const filteredExcursions = excursions.filter(ex => {
         const d = new Date(ex.dateStart);
@@ -366,7 +354,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
     });
 
     if (format === 'pdf') {
-        const doc = new jsPDF('l', 'mm', 'a4'); // Landscape
+        const doc = new jsPDF('l', 'mm', 'a4');
         doc.text(`Informe Anual de Excursiones - Curso ${reportYear}/${reportYear + 1}`, 14, 15);
         doc.setFontSize(10);
         doc.text("Generado por SchoolTripManager Pro", 14, 22);
@@ -445,21 +433,15 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       const realCost = fixedCosts + variableCosts;
       
       doc.text(`Total Recaudado: ${collected}€`, 14, 40);
-      
-      doc.text(`Gastos Fijos (Bus + Otros): ${fixedCosts}€`, 14, 50);
-      doc.text(`Gastos Variables (Entradas x${entryCount}): ${variableCosts}€`, 14, 56);
-      doc.text(`Coste Total: ${realCost}€`, 14, 62);
-      
-      doc.setFont("helvetica", "bold");
-      doc.text(`Balance Final: ${collected - realCost}€`, 14, 75);
-      doc.setFont("helvetica", "normal");
+      doc.text(`Coste Real (Bus+Entradas): ${realCost}€`, 14, 50);
+      doc.text(`Balance: ${collected - realCost}€`, 14, 60);
 
       const tableData = participants.map(p => [
           studentsMap[p.studentId]?.name || 'Unknown',
           p.paid ? `${p.amountPaid}€` : 'Pendiente'
       ]);
 
-      autoTable(doc, { startY: 80, head: [['Alumno', 'Pago']], body: tableData });
+      autoTable(doc, { startY: 70, head: [['Alumno', 'Pago']], body: tableData });
       doc.save(`finanzas_${selectedExcursion.title}.pdf`);
   };
 
@@ -554,7 +536,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   return (
     <div className="flex h-[calc(100vh-100px)] gap-6 relative">
       
-      {/* ... MODALES ANTERIORES ... (Omitidos por brevedad, no cambian) */}
+      {/* ... MODALES ... */}
       {isReportModalOpen && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 rounded-xl backdrop-blur-sm">
               <div className="bg-white w-96 rounded-xl shadow-2xl p-6">
@@ -584,11 +566,17 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                       {classesList
                         .filter(c => user?.role === UserRole.DIRECCION || (user?.role === UserRole.TUTOR && c.id !== user.classId))
                         .map(cls => (
-                            <button key={cls.id} onClick={() => handleInternalShare(cls)} className="w-full text-left px-4 py-3 rounded-lg border border-gray-100 hover:bg-blue-50">
-                                <span className="font-medium text-gray-700">{cls.name}</span>
+                            <button 
+                                key={cls.id} 
+                                onClick={() => handleInternalShare(cls)} 
+                                className="w-full text-left px-4 py-3 rounded-lg border border-gray-100 hover:bg-blue-50 hover:border-blue-200 transition flex justify-between items-center group"
+                            >
+                                <span className="font-medium text-gray-700 group-hover:text-blue-700">{cls.name}</span>
+                                <ArrowRight size={16} className="text-gray-300 group-hover:text-blue-500"/>
                             </button>
                         ))
                       }
+                      {classesList.length === 0 && <p className="text-center text-gray-400">No hay otras clases disponibles.</p>}
                   </div>
                   <button onClick={() => setIsShareModalOpen(false)} className="w-full py-2 text-gray-500 hover:bg-gray-100 rounded-lg">Cancelar</button>
               </div>
@@ -771,7 +759,6 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                 <input type="datetime-local" className="input-field" value={formData.dateEnd?.slice(0, 16)} onChange={e => setFormData({...formData, dateEnd: e.target.value})} disabled={isFieldDisabled('dateEnd')} />
                              </div>
                              
-                             {/* ... Otros campos selectores (igual que antes) ... */}
                              <div>
                                 <label className="label-sm">Vestimenta</label>
                                 <select className="input-field" value={formData.clothing} onChange={e => setFormData({...formData, clothing: e.target.value as ExcursionClothing})} disabled={isFieldDisabled('clothing')}>
@@ -828,6 +815,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                     <div className="flex items-center gap-1.5"><Calendar size={16} className="text-blue-500" /> <span>{new Date(selectedExcursion.dateStart).toLocaleDateString()}</span></div>
                                     <div className="flex items-center gap-1.5"><Clock size={16} className="text-orange-500" /> <span>{new Date(selectedExcursion.dateStart).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></div>
                                     <div className="flex items-center gap-1.5">{getTransportIcon(selectedExcursion.transport)}<span>{selectedExcursion.transport === TransportType.WALKING ? 'Andando' : 'Autobús'}</span></div>
+                                    <div className="flex items-center gap-1.5"><Shirt size={16} className="text-purple-500" /> <span>{getClothingLabel(selectedExcursion.clothing)}</span></div>
                                 </div>
                              </div>
                              <div className="text-right">
@@ -836,7 +824,6 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                              </div>
                         </div>
 
-                        {/* Student List */}
                         <div className="border rounded-lg overflow-hidden">
                              <table className="min-w-full text-sm">
                                 <thead className="bg-gray-100 text-gray-600 uppercase text-xs">
@@ -866,6 +853,11 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                     ))}
                                 </tbody>
                              </table>
+                             {!isExcursionDayOrPast && (
+                                 <div className="p-2 bg-yellow-50 text-xs text-yellow-700 text-center border-t border-yellow-100">
+                                     La columna de "Asistencia Real" se activará el día de la excursión ({new Date(selectedExcursion.dateStart).toLocaleDateString()}).
+                                 </div>
+                             )}
                         </div>
                     </div>
                   ) : null
