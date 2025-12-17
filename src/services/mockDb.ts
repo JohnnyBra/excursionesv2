@@ -1,7 +1,9 @@
 import { User, ClassGroup, Cycle, Student, Excursion, Participation } from '../types';
+import { io, Socket } from 'socket.io-client';
 
 // --- API CONFIG ---
 const API_URL = '/api';
+const SOCKET_URL = 'http://localhost:3005'; // URL directa del backend
 
 // Cache local
 let localState = {
@@ -14,6 +16,8 @@ let localState = {
 };
 
 let isInitialized = false;
+let socket: Socket | null = null;
+let listeners: Array<() => void> = [];
 
 // Datos Iniciales por defecto (por si falla servidor o primera carga)
 const MOCK_CYCLES: Cycle[] = [
@@ -47,30 +51,77 @@ const apiCall = async (endpoint: string, method: string = 'GET', body?: any) => 
 // --- Sync Functions ---
 const syncItem = (entity: string, item: any) => {
   apiCall(`/sync/${entity}`, 'POST', item);
+  // Nota: No necesitamos notificar listeners aquí manualmente, 
+  // el socket nos devolverá el evento 'db_update' y recargará todo.
+  // Sin embargo, para respuesta inmediata UI (Optimistic UI), ya actualizamos localState abajo.
 };
 
 const deleteItem = (entity: string, id: string) => {
   apiCall(`/sync/${entity}/${id}`, 'DELETE');
 };
 
-export const db = {
-  // Inicialización
-  init: async () => {
-    if (isInitialized) return;
+const notifyListeners = () => {
+    listeners.forEach(cb => cb());
+};
+
+const fetchAndLoadData = async () => {
     try {
       const data = await apiCall('/db');
       if (data) {
         localState = data;
-        isInitialized = true;
-        console.log("Datos cargados del servidor:", data);
-      } else {
-        console.warn("Servidor devolvió datos vacíos o error.");
-        // Fallback a ciclos mock si el servidor está vacío
-        if(localState.cycles.length === 0) localState.cycles = MOCK_CYCLES;
+        console.log("Datos sincronizados con servidor via Socket/Init");
+        notifyListeners();
+        return true;
       }
     } catch (e) {
-      console.error("No se pudo conectar al backend.");
+      console.error("Error fetching data", e);
     }
+    return false;
+};
+
+export const db = {
+  // Inicialización y Socket
+  init: async () => {
+    // Conectar Socket siempre, aunque ya tengamos datos (para reconexiones)
+    db.connectSocket();
+
+    if (isInitialized) return;
+    
+    const success = await fetchAndLoadData();
+    if (success) {
+        isInitialized = true;
+    } else {
+        // Fallback
+        if(localState.cycles.length === 0) localState.cycles = MOCK_CYCLES;
+    }
+  },
+
+  connectSocket: () => {
+    if (socket) return; // Ya conectado
+
+    socket = io(SOCKET_URL);
+
+    socket.on('connect', () => {
+        console.log('🌐 Conectado al servidor de tiempo real');
+    });
+
+    socket.on('db_update', (payload) => {
+        console.log('📥 Actualización recibida del servidor:', payload);
+        // Cuando alguien cambia algo, recargamos todo
+        db.reload();
+    });
+  },
+
+  reload: async () => {
+      await fetchAndLoadData();
+  },
+
+  // Sistema de Suscripción (Observer Pattern) para Hooks
+  subscribe: (callback: () => void) => {
+      listeners.push(callback);
+      return () => {
+          listeners = listeners.filter(cb => cb !== callback);
+      };
   },
 
   // Getters
@@ -134,20 +185,14 @@ export const db = {
   importStudentsCSV: (csvContent: string, targetClassId: string) => {
     const lines = csvContent.split(/\r?\n/);
     let count = 0;
-    
-    // Función helper para limpiar comillas (e.g. "Nombre" -> Nombre)
     const cleanStr = (str: string) => str.trim().replace(/['"]/g, '');
 
     lines.forEach(line => {
-      // Ignorar líneas vacías
       if (!line.trim()) return;
-
       const parts = line.split(',');
       if (parts.length >= 2) {
-         // Asumimos formato: Apellidos, Nombre
          const surnames = cleanStr(parts[0]);
          const name = cleanStr(parts[1]);
-         
          if (name && surnames) {
             const newStudent = {
                 id: crypto.randomUUID(),
@@ -168,7 +213,6 @@ export const db = {
     localState.excursions.push(exc);
     syncItem('excursions', exc);
     
-    // Auto-create participations
     let targetStudents: Student[] = [];
     if (exc.scope === 'GLOBAL') {
       targetStudents = localState.students;
@@ -190,7 +234,6 @@ export const db = {
     }));
 
     localState.participations.push(...newParticipations);
-    // Sync participations
     newParticipations.forEach(p => syncItem('participations', p));
   },
 
@@ -206,7 +249,6 @@ export const db = {
      localState.excursions = localState.excursions.filter(e => e.id !== id);
      deleteItem('excursions', id);
      
-     // Clean participations
      const toDelete = localState.participations.filter(p => p.excursionId === id);
      localState.participations = localState.participations.filter(p => p.excursionId !== id);
      toDelete.forEach(p => deleteItem('participations', p.id));

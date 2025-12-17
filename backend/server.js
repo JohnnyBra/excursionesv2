@@ -3,10 +3,33 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const bodyParser = require('body-parser');
+const http = require('http'); // Importar HTTP nativo
+const { Server } = require('socket.io'); // Importar Socket.io
 
 const app = express();
 const PORT = 3005;
 const DB_FILE = path.join(__dirname, 'database.json');
+
+// --- CONFIGURACIÓN SOCKET.IO ---
+const httpServer = http.createServer(app); // Envolver app express
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*", // Permitir conexiones desde cualquier origen (Vite puerto 3006)
+    methods: ["GET", "POST", "DELETE"]
+  }
+});
+
+// Guardar io en app para (opcionalmente) usarlo en otros archivos, 
+// aunque aquí lo usaremos directamente en las rutas.
+app.set('socketio', io);
+
+io.on('connection', (socket) => {
+  console.log('Cliente conectado:', socket.id);
+  
+  socket.on('disconnect', () => {
+    console.log('Cliente desconectado:', socket.id);
+  });
+});
 
 // Middleware
 app.use(cors());
@@ -86,6 +109,10 @@ app.post('/api/sync/:entity', (req, res) => {
   }
 
   writeDb(db);
+  
+  // EMITIR EVENTO SOCKET
+  io.emit('db_update', { entity, action: 'update' });
+  
   res.json({ success: true });
 });
 
@@ -97,6 +124,9 @@ app.delete('/api/sync/:entity/:id', (req, res) => {
   if (db[entity]) {
     db[entity] = db[entity].filter(x => x.id !== id);
     writeDb(db);
+    
+    // EMITIR EVENTO SOCKET
+    io.emit('db_update', { entity, action: 'delete', id });
   }
   res.json({ success: true });
 });
@@ -106,6 +136,10 @@ app.post('/api/restore', (req, res) => {
   const fullData = req.body;
   if(fullData.users && fullData.excursions) {
     writeDb(fullData);
+    
+    // EMITIR EVENTO SOCKET (Full reload)
+    io.emit('db_update', { entity: 'all', action: 'restore' });
+    
     res.json({ success: true });
   } else {
     res.status(400).json({ error: "Formato inválido" });
@@ -117,8 +151,9 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`✅ Servidor Todo-en-Uno corriendo en http://localhost:${PORT}`);
+// USAR httpServer EN LUGAR DE app.listen
+httpServer.listen(PORT, () => {
+  console.log(`✅ Servidor Todo-en-Uno (HTTP + WebSocket) corriendo en http://localhost:${PORT}`);
   console.log(`📁 Base de datos: ${DB_FILE}`);
   console.log(`🌍 Sirviendo frontend desde: ../dist`);
 });
