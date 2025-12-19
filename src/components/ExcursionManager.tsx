@@ -834,8 +834,24 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                              <div className="col-span-2 bg-gray-50 p-4 rounded border">
                                 <label className="label-sm mb-2 block">Alcance</label>
                                 <div className="flex gap-2">
-                                    <select className="border p-2 rounded flex-1" value={formData.scope} onChange={e => setFormData({...formData, scope: e.target.value as ExcursionScope, targetId: ''})} disabled={user?.role === UserRole.TUTOR}>
-                                        <option value={ExcursionScope.GLOBAL}>Global</option>
+                                    <select
+                                        className="border p-2 rounded flex-1"
+                                        value={formData.scope}
+                                        onChange={e => {
+                                            const newScope = e.target.value as ExcursionScope;
+                                            let newTargetId = '';
+                                            if (user?.role === UserRole.TUTOR) {
+                                                if (newScope === ExcursionScope.CICLO) {
+                                                    const myClass = classesList.find(c => c.id === user.classId);
+                                                    newTargetId = myClass?.cycleId || '';
+                                                } else if (newScope === ExcursionScope.CLASE) {
+                                                    newTargetId = user.classId || '';
+                                                }
+                                            }
+                                            setFormData({...formData, scope: newScope, targetId: newTargetId});
+                                        }}
+                                    >
+                                        {user?.role !== UserRole.TUTOR && <option value={ExcursionScope.GLOBAL}>Global</option>}
                                         <option value={ExcursionScope.CICLO}>Ciclo</option>
                                         <option value={ExcursionScope.CLASE}>Clase</option>
                                     </select>
