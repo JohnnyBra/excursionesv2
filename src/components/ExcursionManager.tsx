@@ -17,6 +17,23 @@ interface ExcursionManagerProps {
   mode: 'management' | 'treasury';
 }
 
+const getLogoData = async (url: string): Promise<string> => {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    console.error("Error loading logo", e);
+    return "";
+  }
+};
+
+const LOGO_URL = '/logo_documento.png';
+
 export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   const { user } = useAuth();
   const { addToast } = useToast();
@@ -314,7 +331,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
 
   // --- REPORT GENERATION LOGIC ---
 
-  const handleGenerateAnnualReport = (format: 'pdf' | 'csv') => {
+  const handleGenerateAnnualReport = async (format: 'pdf' | 'csv') => {
     const startDate = new Date(reportYear, 8, 1);
     const endDate = new Date(reportYear + 1, 5, 30);
 
@@ -355,12 +372,18 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
 
     if (format === 'pdf') {
         const doc = new jsPDF('l', 'mm', 'a4');
-        doc.text(`Informe Anual de Excursiones - Curso ${reportYear}/${reportYear + 1}`, 14, 15);
+
+        const logoData = await getLogoData(LOGO_URL);
+        if (logoData) {
+            doc.addImage(logoData, 'PNG', 10, 10, 25, 25);
+        }
+
+        doc.text(`Informe Anual de Excursiones - Curso ${reportYear}/${reportYear + 1}`, 40, 20);
         doc.setFontSize(10);
-        doc.text("Generado por SchoolTripManager Pro", 14, 22);
+        doc.text("Generado por SchoolTripManager Pro", 40, 27);
 
         autoTable(doc, {
-            startY: 25,
+            startY: 40,
             head: [['Fecha', 'Título', 'Destino', 'Grupo', 'Bus', 'Otros', 'Entrada', 'P.Alumno', 'Ingresos', 'Gastos', 'Balance']],
             body: reportData.map(r => Object.values(r)),
             styles: { fontSize: 8 },
@@ -395,14 +418,20 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
     setIsReportModalOpen(false);
   };
 
-  const generatePDF = () => {
-      user?.role === UserRole.TUTOR ? generateTutorReport() : generateFinancialReport();
+  const generatePDF = async () => {
+      user?.role === UserRole.TUTOR ? await generateTutorReport() : await generateFinancialReport();
   };
 
-  const generateTutorReport = () => {
+  const generateTutorReport = async () => {
       if (!selectedExcursion) return;
       const doc = new jsPDF();
-      doc.text(`Lista: ${selectedExcursion.title}`, 14, 20);
+
+      const logoData = await getLogoData(LOGO_URL);
+      if (logoData) {
+          doc.addImage(logoData, 'PNG', 10, 10, 25, 25);
+      }
+
+      doc.text(`Lista: ${selectedExcursion.title}`, 40, 20);
       
       const tableData = participants.map(p => [
           studentsMap[p.studentId]?.name || 'Unknown',
@@ -412,18 +441,24 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       ]);
 
       autoTable(doc, {
-          startY: 40,
+          startY: 50,
           head: [['Alumno', 'Autorización', 'Pagado', 'Asistencia']],
           body: tableData,
       });
       doc.save(`lista_${selectedExcursion.title}.pdf`);
   };
 
-  const generateFinancialReport = () => {
+  const generateFinancialReport = async () => {
       if (!selectedExcursion) return;
       const doc = new jsPDF();
-      doc.text("Informe Económico", 14, 20);
-      doc.text(`Excursión: ${selectedExcursion.title}`, 14, 30);
+
+      const logoData = await getLogoData(LOGO_URL);
+      if (logoData) {
+          doc.addImage(logoData, 'PNG', 10, 10, 25, 25);
+      }
+
+      doc.text("Informe Económico", 40, 20);
+      doc.text(`Excursión: ${selectedExcursion.title}`, 40, 30);
       
       const collected = participants.filter(p => p.paid).reduce((acc, p) => acc + p.amountPaid, 0);
       const entryCount = participants.filter(p => p.attended).length || participants.filter(p => p.paid).length;
@@ -432,29 +467,35 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       const variableCosts = (entryCount * selectedExcursion.costEntry);
       const realCost = fixedCosts + variableCosts;
       
-      doc.text(`Total Recaudado: ${collected}€`, 14, 40);
-      doc.text(`Coste Real (Bus+Entradas): ${realCost}€`, 14, 50);
-      doc.text(`Balance: ${collected - realCost}€`, 14, 60);
+      doc.text(`Total Recaudado: ${collected}€`, 14, 50);
+      doc.text(`Coste Real (Bus+Entradas): ${realCost}€`, 14, 60);
+      doc.text(`Balance: ${collected - realCost}€`, 14, 70);
 
       const tableData = participants.map(p => [
           studentsMap[p.studentId]?.name || 'Unknown',
           p.paid ? `${p.amountPaid}€` : 'Pendiente'
       ]);
 
-      autoTable(doc, { startY: 70, head: [['Alumno', 'Pago']], body: tableData });
+      autoTable(doc, { startY: 80, head: [['Alumno', 'Pago']], body: tableData });
       doc.save(`finanzas_${selectedExcursion.title}.pdf`);
   };
 
-  const generateDirectorReport = () => {
+  const generateDirectorReport = async () => {
       if (!selectedExcursion) return;
       const doc = new jsPDF();
+
+      const logoData = await getLogoData(LOGO_URL);
+      if (logoData) {
+          doc.addImage(logoData, 'PNG', 10, 10, 25, 25);
+      }
+
       const dateStr = new Date(selectedExcursion.dateStart).toLocaleDateString();
       
       doc.setFontSize(16);
-      doc.text("Listado de Control - Día de Excursión", 14, 20);
+      doc.text("Listado de Control - Día de Excursión", 40, 20);
       doc.setFontSize(12);
-      doc.text(`Actividad: ${selectedExcursion.title}`, 14, 30);
-      doc.text(`Fecha: ${dateStr} - Destino: ${selectedExcursion.destination}`, 14, 36);
+      doc.text(`Actividad: ${selectedExcursion.title}`, 40, 30);
+      doc.text(`Fecha: ${dateStr} - Destino: ${selectedExcursion.destination}`, 40, 36);
 
       const participantsByClass: Record<string, typeof participants> = {};
       
@@ -469,7 +510,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
           participantsByClass[className].push(p);
       });
 
-      let currentY = 45;
+      let currentY = 50;
       const classKeys = Object.keys(participantsByClass).sort();
 
       classKeys.forEach(className => {
