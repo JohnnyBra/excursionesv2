@@ -41,8 +41,13 @@ const Login = () => {
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-white/50 backdrop-blur-sm">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Marca de agua */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 opacity-5">
+         <img src="/logo.png" alt="" className="w-full max-w-4xl opacity-50" />
+      </div>
+
+      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-white/50 backdrop-blur-sm relative z-10">
         <div className="text-center mb-8 flex flex-col items-center">
           <img src="logo.png" alt="Logo Hispanidad" className="h-20 w-auto mb-4 object-contain" onError={(e) => e.currentTarget.src = 'https://via.placeholder.com/150?text=LOGO'} />
           <h1 className="text-2xl font-bold text-gray-900">Gestor de Excursiones</h1>
