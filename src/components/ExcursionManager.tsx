@@ -34,6 +34,20 @@ const getLogoData = async (url: string): Promise<string> => {
 
 const LOGO_URL = '/logo_documento.png';
 
+const drawPdfHeader = (doc: jsPDF, logoData: string | null) => {
+  if (logoData) {
+      doc.addImage(logoData, 'PNG', 10, 10, 25, 25);
+  }
+  doc.setFontSize(14);
+  doc.setTextColor(0, 0, 0);
+  doc.text("Cooperativa de Enseñanza La Hispanidad", 40, 20);
+
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  doc.text(new Date().toLocaleString(), 40, 26);
+  doc.setTextColor(0, 0, 0);
+};
+
 export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   const { user } = useAuth();
   const { addToast } = useToast();
@@ -374,16 +388,13 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
         const doc = new jsPDF('l', 'mm', 'a4');
 
         const logoData = await getLogoData(LOGO_URL);
-        if (logoData) {
-            doc.addImage(logoData, 'PNG', 10, 10, 25, 25);
-        }
+        drawPdfHeader(doc, logoData);
 
-        doc.text(`Informe Anual de Excursiones - Curso ${reportYear}/${reportYear + 1}`, 40, 20);
-        doc.setFontSize(10);
-        doc.text("Generado por SchoolTripManager Pro", 40, 27);
+        doc.setFontSize(12);
+        doc.text(`Informe Anual de Excursiones - Curso ${reportYear}/${reportYear + 1}`, 40, 35);
 
         autoTable(doc, {
-            startY: 40,
+            startY: 45,
             head: [['Fecha', 'Título', 'Destino', 'Grupo', 'Bus', 'Otros', 'Entrada', 'P.Alumno', 'Ingresos', 'Gastos', 'Balance']],
             body: reportData.map(r => Object.values(r)),
             styles: { fontSize: 8 },
@@ -427,11 +438,10 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       const doc = new jsPDF();
 
       const logoData = await getLogoData(LOGO_URL);
-      if (logoData) {
-          doc.addImage(logoData, 'PNG', 10, 10, 25, 25);
-      }
+      drawPdfHeader(doc, logoData);
 
-      doc.text(`Lista: ${selectedExcursion.title}`, 40, 20);
+      doc.setFontSize(12);
+      doc.text(`Lista: ${selectedExcursion.title}`, 40, 35);
       
       const tableData = participants.map(p => [
           studentsMap[p.studentId]?.name || 'Unknown',
@@ -453,12 +463,11 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       const doc = new jsPDF();
 
       const logoData = await getLogoData(LOGO_URL);
-      if (logoData) {
-          doc.addImage(logoData, 'PNG', 10, 10, 25, 25);
-      }
+      drawPdfHeader(doc, logoData);
 
-      doc.text("Informe Económico", 40, 20);
-      doc.text(`Excursión: ${selectedExcursion.title}`, 40, 30);
+      doc.setFontSize(12);
+      doc.text("Informe Económico", 40, 35);
+      doc.text(`Excursión: ${selectedExcursion.title}`, 40, 42);
       
       const collected = participants.filter(p => p.paid).reduce((acc, p) => acc + p.amountPaid, 0);
       const entryCount = participants.filter(p => p.attended).length || participants.filter(p => p.paid).length;
@@ -467,16 +476,16 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       const variableCosts = (entryCount * selectedExcursion.costEntry);
       const realCost = fixedCosts + variableCosts;
       
-      doc.text(`Total Recaudado: ${collected}€`, 14, 50);
-      doc.text(`Coste Real (Bus+Entradas): ${realCost}€`, 14, 60);
-      doc.text(`Balance: ${collected - realCost}€`, 14, 70);
+      doc.text(`Total Recaudado: ${collected}€`, 14, 55);
+      doc.text(`Coste Real (Bus+Entradas): ${realCost}€`, 14, 65);
+      doc.text(`Balance: ${collected - realCost}€`, 14, 75);
 
       const tableData = participants.map(p => [
           studentsMap[p.studentId]?.name || 'Unknown',
           p.paid ? `${p.amountPaid}€` : 'Pendiente'
       ]);
 
-      autoTable(doc, { startY: 80, head: [['Alumno', 'Pago']], body: tableData });
+      autoTable(doc, { startY: 85, head: [['Alumno', 'Pago']], body: tableData });
       doc.save(`finanzas_${selectedExcursion.title}.pdf`);
   };
 
@@ -485,17 +494,15 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       const doc = new jsPDF();
 
       const logoData = await getLogoData(LOGO_URL);
-      if (logoData) {
-          doc.addImage(logoData, 'PNG', 10, 10, 25, 25);
-      }
+      drawPdfHeader(doc, logoData);
 
       const dateStr = new Date(selectedExcursion.dateStart).toLocaleDateString();
       
       doc.setFontSize(16);
-      doc.text("Listado de Control - Día de Excursión", 40, 20);
+      doc.text("Listado de Control - Día de Excursión", 40, 35);
       doc.setFontSize(12);
-      doc.text(`Actividad: ${selectedExcursion.title}`, 40, 30);
-      doc.text(`Fecha: ${dateStr} - Destino: ${selectedExcursion.destination}`, 40, 36);
+      doc.text(`Actividad: ${selectedExcursion.title}`, 40, 42);
+      doc.text(`Fecha: ${dateStr} - Destino: ${selectedExcursion.destination}`, 40, 48);
 
       const participantsByClass: Record<string, typeof participants> = {};
       
@@ -510,7 +517,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
           participantsByClass[className].push(p);
       });
 
-      let currentY = 50;
+      let currentY = 60;
       const classKeys = Object.keys(participantsByClass).sort();
 
       classKeys.forEach(className => {
