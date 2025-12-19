@@ -41,8 +41,12 @@ const Login = () => {
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-white/50 backdrop-blur-sm">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      {/* Decorative Background Circles */}
+      <div className="absolute top-0 left-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl translate-x-1/2 translate-y-1/2 pointer-events-none"></div>
+
+      <div className="bg-white/95 backdrop-blur-sm p-8 rounded-2xl shadow-xl w-full max-w-md border border-white/50">
         <div className="text-center mb-8 flex flex-col items-center">
           {/* Usamos ruta absoluta /logo.png */}
           <img 
@@ -56,7 +60,7 @@ const Login = () => {
             }}
           />
           <h1 className="text-2xl font-bold text-gray-900">Gestor de Excursiones</h1>
-          <p className="text-blue-600 font-medium">Cooperativa de Enseñanza La Hispanidad</p>
+          <p className="text-indigo-600 font-medium">Cooperativa de Enseñanza La Hispanidad</p>
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -68,7 +72,7 @@ const Login = () => {
                         type="text" 
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                        className="w-full pl-10 pr-4 py-3 bg-gray-100 border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition"
                         placeholder="Introduce tu usuario"
                     />
                 </div>
@@ -82,28 +86,28 @@ const Login = () => {
                         type="password" 
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                        className="w-full pl-10 pr-4 py-3 bg-gray-100 border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition"
                         placeholder="••••••••"
                     />
                 </div>
             </div>
 
             {error && (
-                <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg text-center font-medium">
+                <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg text-center font-medium animate-pulse">
                     {error}
                 </div>
             )}
 
             <button 
                 type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-500/30 transition-all active:scale-95"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-500/30 transition-all active:scale-95"
             >
                 Entrar a la Plataforma
             </button>
         </form>
         
         <div className="mt-8 text-center space-y-4">
-            <p className="text-[10px] text-gray-300 font-medium tracking-wider uppercase border-t border-gray-100 pt-4 w-1/2 mx-auto">
+            <p className="text-[10px] text-gray-400 font-medium tracking-wider uppercase border-t border-gray-100 pt-4 w-1/2 mx-auto">
                 Creado por Javier Barrero
             </p>
         </div>
