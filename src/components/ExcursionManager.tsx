@@ -841,8 +841,9 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                             const newScope = e.target.value as ExcursionScope;
                                             let newTargetId = '';
                                             if (user?.role === UserRole.TUTOR) {
+                                                const allClasses = db.getClasses();
                                                 if (newScope === ExcursionScope.CICLO) {
-                                                    const myClass = classesList.find(c => c.id === user.classId);
+                                                    const myClass = allClasses.find(c => c.id === user.classId);
                                                     newTargetId = myClass?.cycleId || '';
                                                 } else if (newScope === ExcursionScope.CLASE) {
                                                     newTargetId = user.classId || '';
@@ -858,7 +859,11 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                     {(formData.scope !== ExcursionScope.GLOBAL) && (
                                         <select className="border p-2 rounded flex-1" value={formData.targetId} onChange={e => setFormData({...formData, targetId: e.target.value})} disabled={user?.role === UserRole.TUTOR}>
                                             <option value="">Seleccionar...</option>
-                                            {formData.scope === ExcursionScope.CICLO ? cyclesList.map(c => <option key={c.id} value={c.id}>{c.name}</option>) : classesList.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                            {formData.scope === ExcursionScope.CICLO ?
+                                                (user?.role === UserRole.TUTOR ? db.getCycles() : cyclesList).map(c => <option key={c.id} value={c.id}>{c.name}</option>)
+                                                :
+                                                (user?.role === UserRole.TUTOR ? db.getClasses() : classesList).map(c => <option key={c.id} value={c.id}>{c.name}</option>)
+                                            }
                                         </select>
                                     )}
                                 </div>
