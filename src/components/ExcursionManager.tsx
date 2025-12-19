@@ -35,16 +35,18 @@ const getLogoData = async (url: string): Promise<string> => {
 const LOGO_URL = '/logo_documento.png';
 
 const drawPdfHeader = (doc: jsPDF, logoData: string | null) => {
+  const pageWidth = doc.internal.pageSize.getWidth();
+
   if (logoData) {
-      doc.addImage(logoData, 'PNG', 10, 10, 25, 25);
+      doc.addImage(logoData, 'PNG', pageWidth - 35, 10, 25, 25);
   }
   doc.setFontSize(14);
   doc.setTextColor(0, 0, 0);
-  doc.text("Cooperativa de Enseñanza La Hispanidad", 40, 20);
+  doc.text("Cooperativa de Enseñanza La Hispanidad", 14, 20);
 
   doc.setFontSize(10);
   doc.setTextColor(100, 100, 100);
-  doc.text(new Date().toLocaleString(), 40, 26);
+  doc.text(new Date().toLocaleString(), 14, 26);
   doc.setTextColor(0, 0, 0);
 };
 
