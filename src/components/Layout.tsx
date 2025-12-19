@@ -118,8 +118,14 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto h-[calc(100vh-60px)] md:h-screen">
-        {children}
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto h-[calc(100vh-60px)] md:h-screen relative">
+        {/* Marca de agua */}
+        <div className="fixed inset-0 md:left-64 flex items-center justify-center pointer-events-none z-0 opacity-5">
+           <img src="/logo.png" alt="" className="w-1/3 max-w-2xl object-contain" />
+        </div>
+        <div className="relative z-10">
+          {children}
+        </div>
       </main>
     </div>
   );
