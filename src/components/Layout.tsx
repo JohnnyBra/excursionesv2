@@ -27,7 +27,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     return (
       <div 
         onClick={() => handleNav(path)}
-        className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-colors ${isActive ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}
+        className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-colors ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-100'}`}
       >
         <Icon size={20} />
         <span className="font-medium">{label}</span>
@@ -67,7 +67,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           <h1 className="text-lg font-bold text-gray-800 leading-tight">
             Gestor de Excursiones
           </h1>
-          <p className="text-xs text-blue-600 font-medium mt-1">
+          <p className="text-xs text-indigo-600 font-medium mt-1">
             Coop. Enseñanza La Hispanidad
           </p>
         </div>
@@ -94,7 +94,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
         <div className="absolute bottom-0 w-full p-4 border-t border-gray-100 bg-gray-50">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold border border-blue-200 shadow-sm">
+            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold border border-indigo-200 shadow-sm">
               {user?.name.charAt(0)}
             </div>
             <div className="flex-1 overflow-hidden">
