@@ -166,6 +166,37 @@ export const db = {
       syncItem('users', localState.users[tutorIndex]);
     }
   },
+
+  updateClass: (cls: ClassGroup) => {
+    const idx = localState.classes.findIndex(c => c.id === cls.id);
+    if (idx >= 0) {
+      const oldClass = localState.classes[idx];
+
+      // Si cambia el tutor, actualizar referencias en usuarios
+      if (oldClass.tutorId !== cls.tutorId) {
+          // 1. Quitar clase al tutor antiguo
+          if (oldClass.tutorId) {
+             const oldTutorIdx = localState.users.findIndex(u => u.id === oldClass.tutorId);
+             if (oldTutorIdx >= 0) {
+                 localState.users[oldTutorIdx].classId = undefined;
+                 syncItem('users', localState.users[oldTutorIdx]);
+             }
+          }
+          // 2. Asignar clase al tutor nuevo
+          if (cls.tutorId) {
+             const newTutorIdx = localState.users.findIndex(u => u.id === cls.tutorId);
+             if (newTutorIdx >= 0) {
+                 localState.users[newTutorIdx].classId = cls.id;
+                 syncItem('users', localState.users[newTutorIdx]);
+             }
+          }
+      }
+
+      localState.classes[idx] = cls;
+      syncItem('classes', cls);
+    }
+  },
+
   deleteClass: (id: string) => {
     const cls = localState.classes.find(c => c.id === id);
     if (cls && cls.tutorId) {
