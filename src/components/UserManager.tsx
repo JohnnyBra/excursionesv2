@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../services/mockDb';
 import { User, UserRole, ClassGroup, Student, Cycle } from '../types';
 import { useAuth } from '../App';
-import { Trash2, UserPlus, Edit, Upload, Download, Database, Users, GraduationCap, School, Search } from 'lucide-react';
+import { Trash2, UserPlus, Edit, Upload, Download, Database, Users, GraduationCap, School, Search, KeyRound } from 'lucide-react';
 import { useToast } from './ui/Toast';
 
 export const UserManager: React.FC = () => {
@@ -23,6 +23,7 @@ export const UserManager: React.FC = () => {
     const [editingUser, setEditingUser] = useState<Partial<User> | null>(null);
     const [editingStudent, setEditingStudent] = useState<Partial<Student> | null>(null);
     const [newClass, setNewClass] = useState<Partial<ClassGroup>>({});
+    const [editingClass, setEditingClass] = useState<ClassGroup | null>(null);
     
     // Import State
     const [importClassId, setImportClassId] = useState('');
@@ -32,10 +33,10 @@ export const UserManager: React.FC = () => {
     }, []);
 
     const refreshData = () => {
-        setUsers(db.getUsers());
-        setClasses(db.getClasses());
-        setStudents(db.getStudents());
-        setCycles(db.getCycles());
+        setUsers([...db.getUsers()]);
+        setClasses([...db.getClasses()]);
+        setStudents([...db.getStudents()]);
+        setCycles([...db.getCycles()]);
     };
 
     // Security check
@@ -136,6 +137,17 @@ export const UserManager: React.FC = () => {
     };
 
     // --- CLASS MANAGEMENT ---
+    const handleUpdateClass = () => {
+        if (!editingClass || !editingClass.name || !editingClass.cycleId || !editingClass.tutorId) {
+             addToast('Todos los campos son obligatorios', 'error');
+             return;
+        }
+        db.updateClass(editingClass);
+        setEditingClass(null);
+        refreshData();
+        addToast('Clase actualizada', 'success');
+    };
+
     const handleAddClass = () => {
         if (!newClass.name || !newClass.cycleId || !newClass.tutorId) {
              addToast('Todos los campos son obligatorios', 'error');
@@ -224,9 +236,23 @@ export const UserManager: React.FC = () => {
                                     <option value={UserRole.TESORERIA}>Tesorería</option>
                                     <option value={UserRole.COORDINACION}>Coordinación</option>
                                 </select>
-                                <div className="col-span-2 flex justify-end gap-2">
-                                    <button onClick={() => setEditingUser(null)} className="px-3 py-1 text-gray-500">Cancelar</button>
-                                    <button onClick={handleSaveUser} className="px-3 py-1 bg-green-600 text-white rounded">Guardar</button>
+                                <div className="col-span-2 flex justify-between items-center mt-2">
+                                     <button
+                                        onClick={() => {
+                                            if(confirm('¿Restablecer la contraseña a "123"?')) {
+                                                setEditingUser({...editingUser, password: '123'});
+                                                addToast('Contraseña restablecida a "123" (Guarde para aplicar)', 'info');
+                                            }
+                                        }}
+                                        className="text-orange-600 text-sm flex items-center gap-1 hover:underline"
+                                     >
+                                        <KeyRound size={14}/> Restablecer Contraseña
+                                     </button>
+
+                                     <div className="flex gap-2">
+                                        <button onClick={() => setEditingUser(null)} className="px-3 py-1 text-gray-500">Cancelar</button>
+                                        <button onClick={handleSaveUser} className="px-3 py-1 bg-green-600 text-white rounded">Guardar</button>
+                                     </div>
                                 </div>
                             </div>
                         )}
@@ -270,21 +296,40 @@ export const UserManager: React.FC = () => {
                 {/* --- CLASSES TAB --- */}
                 {activeTab === 'classes' && (
                     <div className="space-y-6">
-                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                            <h4 className="font-bold text-blue-900 mb-2">Crear Nueva Clase</h4>
-                            <div className="flex gap-2">
-                                <input placeholder="Nombre (Ej: 1º A)" className="border p-2 rounded flex-1" value={newClass.name || ''} onChange={e => setNewClass({...newClass, name: e.target.value})} />
-                                <select className="border p-2 rounded flex-1" value={newClass.cycleId || ''} onChange={e => setNewClass({...newClass, cycleId: e.target.value})}>
-                                    <option value="">Selecciona Ciclo...</option>
-                                    {cycles.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                </select>
-                                <select className="border p-2 rounded flex-1" value={newClass.tutorId || ''} onChange={e => setNewClass({...newClass, tutorId: e.target.value})}>
-                                    <option value="">Asignar Tutor...</option>
-                                    {users.filter(u => u.role === UserRole.TUTOR).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                                </select>
-                                <button onClick={handleAddClass} className="bg-blue-600 text-white px-4 rounded font-medium">Añadir</button>
+                        {editingClass ? (
+                            <div className="bg-orange-50 p-4 rounded-lg border border-orange-100 animate-fade-in">
+                                <h4 className="font-bold text-orange-900 mb-2">Editar Clase</h4>
+                                <div className="flex gap-2">
+                                    <input placeholder="Nombre" className="border p-2 rounded flex-1" value={editingClass.name} onChange={e => setEditingClass({...editingClass, name: e.target.value})} />
+                                    <select className="border p-2 rounded flex-1" value={editingClass.cycleId} onChange={e => setEditingClass({...editingClass, cycleId: e.target.value})}>
+                                        <option value="">Selecciona Ciclo...</option>
+                                        {cycles.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                    </select>
+                                    <select className="border p-2 rounded flex-1" value={editingClass.tutorId} onChange={e => setEditingClass({...editingClass, tutorId: e.target.value})}>
+                                        <option value="">Asignar Tutor...</option>
+                                        {users.filter(u => u.role === UserRole.TUTOR).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                                    </select>
+                                    <button onClick={handleUpdateClass} className="bg-orange-600 text-white px-4 rounded font-medium">Actualizar</button>
+                                    <button onClick={() => setEditingClass(null)} className="text-gray-500 px-2">Cancelar</button>
+                                </div>
                             </div>
-                        </div>
+                        ) : (
+                            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                                <h4 className="font-bold text-blue-900 mb-2">Crear Nueva Clase</h4>
+                                <div className="flex gap-2">
+                                    <input placeholder="Nombre (Ej: 1º A)" className="border p-2 rounded flex-1" value={newClass.name || ''} onChange={e => setNewClass({...newClass, name: e.target.value})} />
+                                    <select className="border p-2 rounded flex-1" value={newClass.cycleId || ''} onChange={e => setNewClass({...newClass, cycleId: e.target.value})}>
+                                        <option value="">Selecciona Ciclo...</option>
+                                        {cycles.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                    </select>
+                                    <select className="border p-2 rounded flex-1" value={newClass.tutorId || ''} onChange={e => setNewClass({...newClass, tutorId: e.target.value})}>
+                                        <option value="">Asignar Tutor...</option>
+                                        {users.filter(u => u.role === UserRole.TUTOR).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                                    </select>
+                                    <button onClick={handleAddClass} className="bg-blue-600 text-white px-4 rounded font-medium">Añadir</button>
+                                </div>
+                            </div>
+                        )}
 
                         <div>
                             <h3 className="font-bold mb-4">Clases Existentes</h3>
@@ -296,9 +341,14 @@ export const UserManager: React.FC = () => {
                                             <p className="text-sm text-gray-500">{cycles.find(cy => cy.id === c.cycleId)?.name}</p>
                                             <p className="text-xs text-blue-600 mt-1">Tutor: {users.find(u => u.id === c.tutorId)?.name || 'Sin asignar'}</p>
                                         </div>
-                                        <button onClick={() => { if(confirm('¿Borrar clase?')) { db.deleteClass(c.id); refreshData(); } }} className="text-red-400 hover:text-red-600">
-                                            <Trash2 size={18} />
-                                        </button>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => setEditingClass(c)} className="text-blue-600 hover:text-blue-800">
+                                                <Edit size={18} />
+                                            </button>
+                                            <button onClick={() => { if(confirm('¿Borrar clase?')) { db.deleteClass(c.id); refreshData(); } }} className="text-red-400 hover:text-red-600">
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
