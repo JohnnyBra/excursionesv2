@@ -26,6 +26,10 @@ const StatCard = ({ title, value, icon: Icon, color, onClick }: any) => (
 export const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Get fresh user data to avoid stale classId from localStorage
+  const currentUser = user ? db.getUsers().find(u => u.id === user.id) || user : user;
+
   const excursions = db.getExcursions();
   const participations = db.getParticipations();
 
@@ -48,9 +52,9 @@ export const Dashboard: React.FC = () => {
     if (user?.role === UserRole.DIRECCION || user?.role === UserRole.TESORERIA) return true;
     if (user?.role === UserRole.TUTOR) {
       if (e.scope === 'GLOBAL') return true;
-      if (e.scope === 'CLASE' && e.targetId === user.classId) return true;
+      if (e.scope === 'CLASE' && e.targetId === currentUser?.classId) return true;
       // Simplified cycle check
-      const myClass = db.classes.find(c => c.id === user.classId);
+      const myClass = db.classes.find(c => c.id === currentUser?.classId);
       if (e.scope === 'CICLO' && e.targetId === myClass?.cycleId) return true;
     }
     return false;

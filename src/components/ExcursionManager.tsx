@@ -59,6 +59,9 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   // HOOK DE SINCRONIZACIÓN
   const dbVersion = useDataSync();
 
+  // Get fresh user data to avoid stale classId from localStorage
+  const currentUser = user ? db.getUsers().find(u => u.id === user.id) || user : user;
+
   const [excursions, setExcursions] = useState<Excursion[]>([]);
   const [selectedExcursion, setSelectedExcursion] = useState<Excursion | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -139,11 +142,11 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
     let visible = all;
 
     if (user?.role === UserRole.TUTOR) {
-        const myClass = db.classes.find(c => c.id === user.classId);
+        const myClass = db.classes.find(c => c.id === currentUser?.classId);
         visible = all.filter(e => 
             e.scope === ExcursionScope.GLOBAL || 
             (e.scope === ExcursionScope.CICLO && e.targetId === myClass?.cycleId) ||
-            (e.scope === ExcursionScope.CLASE && e.targetId === user.classId)
+            (e.scope === ExcursionScope.CLASE && e.targetId === currentUser?.classId)
         );
     } 
     
@@ -197,7 +200,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       costGlobal: 0,
       estimatedStudents: 0,
       scope: user?.role === UserRole.TUTOR ? ExcursionScope.CLASE : ExcursionScope.GLOBAL,
-      targetId: user?.role === UserRole.TUTOR ? user.classId || '' : '',
+      targetId: user?.role === UserRole.TUTOR ? currentUser?.classId || '' : '',
       creatorId: user?.id || ''
     };
     setSelectedExcursion(newExcursion);
@@ -236,14 +239,14 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   };
 
   const handleDuplicateToClass = () => {
-      if (!selectedExcursion || user?.role !== UserRole.TUTOR || !user.classId) return;
+      if (!selectedExcursion || user?.role !== UserRole.TUTOR || !currentUser?.classId) return;
       
       const copy: Excursion = {
           ...selectedExcursion,
           id: crypto.randomUUID(),
           title: `${selectedExcursion.title} (Mi Clase)`,
           scope: ExcursionScope.CLASE,
-          targetId: user.classId,
+          targetId: currentUser.classId,
           creatorId: user.id
       };
       
@@ -614,7 +617,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                   </h3>
                   <div className="space-y-2 max-h-60 overflow-y-auto mb-4">
                       {classesList
-                        .filter(c => user?.role === UserRole.DIRECCION || (user?.role === UserRole.TUTOR && c.id !== user.classId))
+                        .filter(c => user?.role === UserRole.DIRECCION || (user?.role === UserRole.TUTOR && c.id !== currentUser?.classId))
                         .map(cls => (
                             <button 
                                 key={cls.id} 
@@ -842,10 +845,10 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                             let newTargetId = '';
                                             if (user?.role === UserRole.TUTOR) {
                                                 if (newScope === ExcursionScope.CICLO) {
-                                                    const myClass = classesList.find(c => c.id === user.classId) || db.getClasses().find(c => c.id === user.classId);
+                                                    const myClass = classesList.find(c => c.id === currentUser?.classId) || db.getClasses().find(c => c.id === currentUser?.classId);
                                                     newTargetId = myClass?.cycleId || '';
                                                 } else if (newScope === ExcursionScope.CLASE) {
-                                                    newTargetId = user.classId || '';
+                                                    newTargetId = currentUser?.classId || '';
                                                 }
                                             }
                                             setFormData({...formData, scope: newScope, targetId: newTargetId});
