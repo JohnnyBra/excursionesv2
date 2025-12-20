@@ -159,8 +159,23 @@ export const db = {
   addClass: (cls: ClassGroup) => {
     localState.classes.push(cls);
     syncItem('classes', cls);
+
+    const tutorIndex = localState.users.findIndex(u => u.id === cls.tutorId);
+    if (tutorIndex >= 0) {
+      localState.users[tutorIndex].classId = cls.id;
+      syncItem('users', localState.users[tutorIndex]);
+    }
   },
   deleteClass: (id: string) => {
+    const cls = localState.classes.find(c => c.id === id);
+    if (cls && cls.tutorId) {
+      const tutorIndex = localState.users.findIndex(u => u.id === cls.tutorId);
+      if (tutorIndex >= 0) {
+        localState.users[tutorIndex].classId = undefined;
+        syncItem('users', localState.users[tutorIndex]);
+      }
+    }
+
     localState.classes = localState.classes.filter(c => c.id !== id);
     deleteItem('classes', id);
   },
