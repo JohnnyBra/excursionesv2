@@ -330,6 +330,10 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       setFormData(excursionToSave);
       setIsEditing(false);
       loadData();
+
+      // Refresh participants immediately
+      const allParts = db.getParticipations();
+      setParticipants(allParts.filter(p => p.excursionId === excursionToSave.id));
     }
   };
 
