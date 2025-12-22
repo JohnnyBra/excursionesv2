@@ -50,6 +50,43 @@ const drawPdfHeader = (doc: jsPDF, logoData: string | null) => {
   doc.setTextColor(0, 0, 0);
 };
 
+const sortParticipations = (list: Participation[]) => {
+  const students = db.getStudents();
+  const classes = db.getClasses();
+  const studentMap = new Map(students.map(s => [s.id, s]));
+  const classMap = new Map(classes.map(c => [c.id, c]));
+
+  const getSurname = (name: string) => {
+      const parts = name.trim().split(/\s+/);
+      if (parts.length >= 3) return parts.slice(-2).join(' ').toLowerCase();
+      if (parts.length === 2) return parts[1].toLowerCase();
+      return parts[0].toLowerCase();
+  };
+
+  return [...list].sort((a, b) => {
+      const sA = studentMap.get(a.studentId);
+      const sB = studentMap.get(b.studentId);
+      if (!sA || !sB) return 0;
+
+      const cA = classMap.get(sA.classId);
+      const cB = classMap.get(sB.classId);
+
+      const classNameA = cA?.name || '';
+      const classNameB = cB?.name || '';
+
+      if (classNameA !== classNameB) {
+          return classNameA.localeCompare(classNameB);
+      }
+
+      const surnameA = getSurname(sA.name);
+      const surnameB = getSurname(sB.name);
+
+      if (surnameA !== surnameB) return surnameA.localeCompare(surnameB);
+
+      return sA.name.localeCompare(sB.name);
+  });
+};
+
 export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   const { user } = useAuth();
   const { addToast } = useToast();
@@ -104,7 +141,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                  setFormData(updatedExcursion);
              }
              const allParts = db.getParticipations();
-             setParticipants(allParts.filter(p => p.excursionId === updatedExcursion.id));
+             setParticipants(sortParticipations(allParts.filter(p => p.excursionId === updatedExcursion.id)));
         } else {
              if (!isEditing) { 
                  setSelectedExcursion(null);
@@ -214,7 +251,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
     setSelectedExcursion(ex);
     setFormData(ex);
     const allParts = db.getParticipations();
-    setParticipants(allParts.filter(p => p.excursionId === ex.id));
+    setParticipants(sortParticipations(allParts.filter(p => p.excursionId === ex.id)));
     setIsEditing(false);
     setActiveTab(mode === 'treasury' ? 'budget' : 'details');
   };
@@ -333,7 +370,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
 
       // Refresh participants immediately
       const allParts = db.getParticipations();
-      setParticipants(allParts.filter(p => p.excursionId === excursionToSave.id));
+      setParticipants(sortParticipations(allParts.filter(p => p.excursionId === excursionToSave.id)));
     }
   };
 
