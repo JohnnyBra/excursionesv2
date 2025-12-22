@@ -29,6 +29,31 @@ const MOCK_CYCLES: Cycle[] = [
   { id: 'c6', name: 'ESO - 2º Ciclo (3º y 4º)' }
 ];
 
+const generateParticipationsForExcursion = (exc: Excursion) => {
+  let targetStudents: Student[] = [];
+  if (exc.scope === 'GLOBAL') {
+    targetStudents = localState.students;
+  } else if (exc.scope === 'CICLO') {
+    const cycleClasses = localState.classes.filter(c => c.cycleId === exc.targetId).map(c => c.id);
+    targetStudents = localState.students.filter(s => cycleClasses.includes(s.classId));
+  } else if (exc.scope === 'CLASE') {
+    targetStudents = localState.students.filter(s => s.classId === exc.targetId);
+  }
+
+  const newParticipations = targetStudents.map(s => ({
+    id: crypto.randomUUID(),
+    studentId: s.id,
+    excursionId: exc.id,
+    authSigned: false,
+    paid: false,
+    amountPaid: 0,
+    attended: false
+  }));
+
+  localState.participations.push(...newParticipations);
+  newParticipations.forEach(p => syncItem('participations', p));
+};
+
 // --- Helper Fetch ---
 const apiCall = async (endpoint: string, method: string = 'GET', body?: any) => {
   try {
@@ -226,6 +251,10 @@ export const db = {
   deleteStudent: (id: string) => {
     localState.students = localState.students.filter(s => s.id !== id);
     deleteItem('students', id);
+
+    const toDelete = localState.participations.filter(p => p.studentId === id);
+    localState.participations = localState.participations.filter(p => p.studentId !== id);
+    toDelete.forEach(p => deleteItem('participations', p.id));
   },
   
   importStudentsCSV: (csvContent: string, targetClassId: string) => {
@@ -258,36 +287,27 @@ export const db = {
   addExcursion: (exc: Excursion) => {
     localState.excursions.push(exc);
     syncItem('excursions', exc);
-    
-    let targetStudents: Student[] = [];
-    if (exc.scope === 'GLOBAL') {
-      targetStudents = localState.students;
-    } else if (exc.scope === 'CICLO') {
-      const cycleClasses = localState.classes.filter(c => c.cycleId === exc.targetId).map(c => c.id);
-      targetStudents = localState.students.filter(s => cycleClasses.includes(s.classId));
-    } else if (exc.scope === 'CLASE') {
-      targetStudents = localState.students.filter(s => s.classId === exc.targetId);
-    }
-
-    const newParticipations = targetStudents.map(s => ({
-      id: crypto.randomUUID(),
-      studentId: s.id,
-      excursionId: exc.id,
-      authSigned: false,
-      paid: false,
-      amountPaid: 0,
-      attended: false
-    }));
-
-    localState.participations.push(...newParticipations);
-    newParticipations.forEach(p => syncItem('participations', p));
+    generateParticipationsForExcursion(exc);
   },
 
   updateExcursion: (updated: Excursion) => {
     const idx = localState.excursions.findIndex(x => x.id === updated.id);
     if (idx >= 0) {
+      const old = localState.excursions[idx];
+      const scopeChanged = old.scope !== updated.scope || old.targetId !== updated.targetId;
+
       localState.excursions[idx] = updated;
       syncItem('excursions', updated);
+
+      if (scopeChanged) {
+        // Remove old participations
+        const toDelete = localState.participations.filter(p => p.excursionId === updated.id);
+        localState.participations = localState.participations.filter(p => p.excursionId !== updated.id);
+        toDelete.forEach(p => deleteItem('participations', p.id));
+
+        // Generate new ones
+        generateParticipationsForExcursion(updated);
+      }
     }
   },
 
