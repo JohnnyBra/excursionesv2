@@ -8,9 +8,14 @@ export default defineConfig({
     port: 3006,
     strictPort: true,
     proxy: {
-      // Redirige todas las peticiones que empiecen por /api al backend en puerto 3005
+      // Redirige todas las peticiones que empiecen por /api al backend en puerto 3020
       '/api': {
-        target: 'http://localhost:3005',
+        target: 'http://localhost:3020',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/auth': {
+        target: 'http://localhost:3020',
         changeOrigin: true,
         secure: false,
       }
