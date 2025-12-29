@@ -29,15 +29,20 @@ const MOCK_CYCLES: Cycle[] = [
   { id: 'c6', name: 'ESO - 2º Ciclo (3º y 4º)' }
 ];
 
-const generateParticipationsForExcursion = (exc: Excursion) => {
+const generateParticipationsForExcursion = (exc: Excursion, explicitStudentIds?: string[]) => {
   let targetStudents: Student[] = [];
-  if (exc.scope === 'GLOBAL') {
-    targetStudents = localState.students;
-  } else if (exc.scope === 'CICLO') {
-    const cycleClasses = localState.classes.filter(c => c.cycleId === exc.targetId).map(c => c.id);
-    targetStudents = localState.students.filter(s => cycleClasses.includes(s.classId));
-  } else if (exc.scope === 'CLASE') {
-    targetStudents = localState.students.filter(s => s.classId === exc.targetId);
+
+  if (explicitStudentIds && explicitStudentIds.length > 0) {
+    targetStudents = localState.students.filter(s => explicitStudentIds.includes(s.id));
+  } else {
+    if (exc.scope === 'GLOBAL') {
+      targetStudents = localState.students;
+    } else if (exc.scope === 'CICLO') {
+      const cycleClasses = localState.classes.filter(c => c.cycleId === exc.targetId).map(c => c.id);
+      targetStudents = localState.students.filter(s => cycleClasses.includes(s.classId));
+    } else if (exc.scope === 'CLASE') {
+      targetStudents = localState.students.filter(s => s.classId === exc.targetId);
+    }
   }
 
   const newParticipations = targetStudents.map(s => ({
@@ -284,10 +289,10 @@ export const db = {
   },
 
   // Excursions
-  addExcursion: (exc: Excursion) => {
+  addExcursion: (exc: Excursion, explicitStudentIds?: string[]) => {
     localState.excursions.push(exc);
     syncItem('excursions', exc);
-    generateParticipationsForExcursion(exc);
+    generateParticipationsForExcursion(exc, explicitStudentIds);
   },
 
   updateExcursion: (updated: Excursion) => {
