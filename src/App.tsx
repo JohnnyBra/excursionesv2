@@ -12,7 +12,7 @@ import { Lock, User as UserIcon, Save, Loader, ShieldCheck } from 'lucide-react'
 // -- Auth Context --
 interface AuthContextType {
   user: User | null;
-  login: (u: string, p: string) => boolean;
+  login: (u: string, p: string) => Promise<boolean>;
   logout: () => void;
 }
 
@@ -31,12 +31,22 @@ const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = login(username, password);
-    if (!success) {
-        setError('Credenciales incorrectas o servidor no disponible');
+    setLoading(true);
+    setError('');
+
+    try {
+        const success = await login(username, password);
+        if (!success) {
+            setError('Credenciales incorrectas o servidor no disponible');
+        }
+    } catch(e) {
+        setError('Error de conexión');
+    } finally {
+        setLoading(false);
     }
   };
   
@@ -100,9 +110,11 @@ const Login = () => {
 
             <button 
                 type="submit"
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-500/30 transition-all active:scale-95"
+                disabled={loading}
+                className={`w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-500/30 transition-all active:scale-95 flex justify-center items-center gap-2 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
             >
-                Entrar a la Plataforma
+                {loading && <Loader size={18} className="animate-spin" />}
+                {loading ? 'Validando...' : 'Entrar a la Plataforma'}
             </button>
         </form>
         
@@ -220,19 +232,39 @@ const AppContent = () => {
     initApp();
   }, []);
 
-  const login = (username: string, pass: string): boolean => {
-    const users = db.getUsers();
-    // Safety check if users is undefined/empty due to network error
-    if (!users || users.length === 0) {
-        return false;
-    }
-
-    const found = users.find(u => u.username === username && u.password === pass);
+  const login = async (username: string, pass: string): Promise<boolean> => {
+    // FASE 3: Login via Proxy
+    const response = await db.loginProxy(username, pass);
     
-    if (found) {
-        setUser(found);
-        localStorage.setItem('auth_user', JSON.stringify(found));
-        addToast(`Bienvenido/a ${found.name}`, 'success');
+    if (response && response.success && response.user) {
+        // El usuario viene de Prisma
+        // Necesitamos mapearlo a nuestro formato User local
+        const prismaUser = response.user;
+
+        const userMapped: User = {
+            id: prismaUser.id,
+            username: prismaUser.username,
+            name: prismaUser.name, // "Nombre real del profesor"
+            email: prismaUser.email || '',
+            role: prismaUser.role, // TUTOR, DIRECCION, etc.
+            classId: prismaUser.classId, // Si es tutor, su clase
+            password: '' // No guardamos password
+        };
+
+        // Opcional: Si queremos que este usuario exista en local DB para referencias futuras
+        // db.addUser(userMapped) // Cuidado con duplicados, mejor solo usar en sesión
+        // O sincronizar si no existe:
+        const localUsers = db.getUsers();
+        if (!localUsers.find(u => u.id === userMapped.id)) {
+            db.addUser(userMapped);
+        } else {
+            // Actualizar nombre si cambió en Prisma
+            db.updateUser(userMapped);
+        }
+
+        setUser(userMapped);
+        localStorage.setItem('auth_user', JSON.stringify(userMapped));
+        addToast(`Bienvenido/a ${userMapped.name}`, 'success');
         return true;
     }
     return false;
