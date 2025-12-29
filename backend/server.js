@@ -3,6 +3,7 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const bodyParser = require('body-parser');
+const axios = require('axios');
 const http = require('http'); // Importar HTTP nativo
 const { Server } = require('socket.io'); // Importar Socket.io
 
@@ -143,6 +144,48 @@ app.post('/api/restore', (req, res) => {
     res.json({ success: true });
   } else {
     res.status(400).json({ error: "Formato inválido" });
+  }
+});
+
+// --- INTEGRACIÓN EXTERNA ---
+
+// Autenticación Delegada
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body;
+  try {
+    const response = await axios.post('http://localhost:3020/api/auth/external-check', { username, password });
+    // Si la respuesta es positiva (200), devolvemos el usuario
+    res.json(response.data);
+  } catch (error) {
+    // Si falla la autenticación externa
+    if (error.response && error.response.status === 401) {
+      res.status(401).json({ error: 'Credenciales inválidas' });
+    } else {
+      console.error('Error connecting to external auth:', error.message);
+      res.status(500).json({ error: 'Error de conexión con el servidor de autenticación' });
+    }
+  }
+});
+
+// Proxy Clases
+app.get('/api/proxy/classes', async (req, res) => {
+  try {
+    const response = await axios.get('http://localhost:3020/api/export/classes');
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error fetching external classes:', error.message);
+    res.status(500).json({ error: 'Error obteniendo clases externas' });
+  }
+});
+
+// Proxy Alumnos
+app.get('/api/proxy/students', async (req, res) => {
+  try {
+    const response = await axios.get('http://localhost:3020/api/export/students');
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error fetching external students:', error.message);
+    res.status(500).json({ error: 'Error obteniendo alumnos externos' });
   }
 });
 
