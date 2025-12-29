@@ -3,148 +3,218 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const bodyParser = require('body-parser');
-const http = require('http'); // Importar HTTP nativo
-const { Server } = require('socket.io'); // Importar Socket.io
+const http = require('http');
+const { Server } = require('socket.io');
+const sqlite3 = require('sqlite3').verbose();
+const passport = require('passport');
+const session = require('express-session');
+const bcrypt = require('bcrypt');
+require('dotenv').config();
 
 const app = express();
-const PORT = 3005;
-const DB_FILE = path.join(__dirname, 'database.json');
+const PORT = 3020; // Changed to 3020 as requested
+const DB_PATH = path.join(__dirname, 'school.db');
+
+// --- DATABASE CONNECTION ---
+const db = new sqlite3.Database(DB_PATH, (err) => {
+    if (err) console.error("Could not connect to database", err);
+    else console.log("Connected to SQLite database");
+});
 
 // --- CONFIGURACIÓN SOCKET.IO ---
-const httpServer = http.createServer(app); // Envolver app express
+const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: "*", // Permitir conexiones desde cualquier origen (Vite puerto 3006)
+    origin: "*",
     methods: ["GET", "POST", "DELETE"]
   }
 });
-
-// Guardar io en app para (opcionalmente) usarlo en otros archivos, 
-// aunque aquí lo usaremos directamente en las rutas.
 app.set('socketio', io);
 
-io.on('connection', (socket) => {
-  console.log('Cliente conectado:', socket.id);
-  
-  socket.on('disconnect', () => {
-    console.log('Cliente desconectado:', socket.id);
-  });
+// --- EXPRESS CONFIG ---
+app.set('trust proxy', 1); // Requested config
+
+app.use(cors({
+    origin: true, // Allow all for now, or specify frontend URL
+    credentials: true
+}));
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true }));
+
+// --- SESSION & PASSPORT ---
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'secret_key_change_me',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production', // Secure in production (behind https proxy)
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+require('./auth')(passport); // Configure Passport Strategies
+
+// --- AUTH ROUTES ---
+
+// Local Login
+app.post('/api/login', (req, res, next) => {
+    passport.authenticate('local', (err, user, info) => {
+        if (err) return next(err);
+        if (!user) return res.status(401).json({ success: false, message: info.message });
+
+        req.logIn(user, (err) => {
+            if (err) return next(err);
+            return res.json({ success: true, user: { id: user.id, username: user.username, role: user.role, name: user.name } });
+        });
+    })(req, res, next);
 });
 
-// Middleware
-app.use(cors());
-app.use(bodyParser.json({ limit: '50mb' }));
+// Google Login
+app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+
+app.get('/auth/google/callback',
+    passport.authenticate('google', { failureRedirect: '/login?error=google_auth_failed' }),
+    (req, res) => {
+        // Successful authentication, redirect home.
+        res.redirect('/');
+    }
+);
+
+// Logout
+app.post('/api/logout', (req, res) => {
+    req.logout((err) => {
+        if (err) return res.status(500).json({ success: false });
+        res.json({ success: true });
+    });
+});
+
+// Current User
+app.get('/api/me', (req, res) => {
+    if (req.isAuthenticated()) {
+        res.json({
+            authenticated: true,
+            user: {
+                id: req.user.id,
+                username: req.user.username,
+                role: req.user.role,
+                name: req.user.name
+            }
+        });
+    } else {
+        res.json({ authenticated: false });
+    }
+});
+
+// External Check (Satellite Apps)
+app.post('/api/auth/external-check', async (req, res) => {
+    const { username, password } = req.body;
+    
+    db.get("SELECT * FROM users WHERE username = ?", [username], async (err, user) => {
+        if (err) return res.status(500).json({ success: false, error: "DB Error" });
+        if (!user) return res.json({ success: false, message: "User not found" });
+
+        const match = await bcrypt.compare(password, user.password);
+        if (match) {
+            res.json({
+                success: true,
+                role: user.role,
+                name: user.name
+            });
+        } else {
+            res.json({ success: false, message: "Invalid credentials" });
+        }
+    });
+});
+
+
+// --- EXPORT API (Phase 3) ---
+const checkApiSecret = (req, res, next) => {
+    const secret = req.headers['api-secret'] || req.headers['api_secret'];
+    // In a real env, match against process.env.API_SECRET
+    // For now, let's assume 'prisma_secret_123' if not set in env
+    const validSecret = process.env.API_SECRET || 'prisma_secret_123';
+    
+    if (secret === validSecret) {
+        next();
+    } else {
+        res.status(403).json({ error: 'Unauthorized: Invalid API Key' });
+    }
+};
+
+app.get('/api/export/classes', checkApiSecret, (req, res) => {
+    const query = `
+        SELECT c.id, c.name,
+               l.name as level,
+               cy.name as cycle,
+               s.name as stage
+        FROM classes c
+        JOIN levels l ON c.level_id = l.id
+        JOIN cycles cy ON l.cycle_id = cy.id
+        JOIN stages s ON cy.stage_id = s.id
+    `;
+    db.all(query, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+app.get('/api/export/students', checkApiSecret, (req, res) => {
+    db.all("SELECT id, name, class_id FROM students", [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+app.get('/api/export/users', checkApiSecret, (req, res) => {
+    // Only return active teachers (profesor)
+    db.all("SELECT id, name, email FROM users WHERE role = 'profesor'", [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+
+// --- LEGACY/COMPATIBILITY ROUTES (To keep frontend working initially if needed) ---
+// We should probably implement /api/proxy/classes and /api/proxy/students
+// BUT the prompt says "Convert this app into the Central ERP".
+// The frontend uses "mockDb" or "proxy".
+// The previous server.js had /api/db, /api/sync/*
+// If we want the frontend to work immediately, we might need to map the new DB to the old endpoints or update the frontend to use the new endpoints.
+// For now, I will implement the requested phases.
+// If the user wants the frontend to work *as is*, I'd need to mock the old endpoints using SQLite data.
+
+// Let's reimplement /api/proxy/classes using the new DB, because the frontend expects it?
+// Wait, the memory says: "Authentication is performed via the backend endpoint POST /api/login, which acts as a proxy to an external authentication service (PrismaEdu) running on http://localhost:3020."
+// NOW, WE ARE BUILDING THAT SERVICE ON 3020.
+// So the frontend calls /api/login -> which now hits this server directly (if frontend proxy is updated or if this server is the main one).
+// The frontend calls /api/proxy/classes -> which presumably fetches from 3020.
+// So I should implement /api/proxy/classes (or just /api/classes if the frontend calls it that).
+// Actually, I should probably expose the classes at a standard endpoint.
+
+// Reimplementing basic data fetch for the frontend to consume (assuming frontend logic will be updated or expects specific format)
+app.get('/api/classes', (req, res) => {
+    const query = `
+        SELECT c.id, c.name,
+               l.name as level,
+               cy.name as cycle,
+               s.name as stage
+        FROM classes c
+        JOIN levels l ON c.level_id = l.id
+        JOIN cycles cy ON l.cycle_id = cy.id
+        JOIN stages s ON cy.stage_id = s.id
+    `;
+    db.all(query, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
 
 // --- SERVIR FRONTEND ESTÁTICO ---
 app.use(express.static(path.join(__dirname, '../dist')));
-
-// --- Datos Iniciales (Semilla) Actualizados ---
-const INITIAL_DATA = {
-  users: [
-    { id: 'u1', username: 'direccion', password: '123', name: 'Ana Directora', email: 'admin@hispanidad.com', role: 'DIRECCION' },
-    { id: 'u2', username: 'tutor1', password: '123', name: 'Carlos Tutor', email: 'tutor@hispanidad.com', role: 'TUTOR', classId: 'cl1' },
-    { id: 'u3', username: 'tesoreria', password: '123', name: 'Laura Tesorera', email: 'money@hispanidad.com', role: 'TESORERIA' },
-    { id: 'u4', username: 'tutor2', password: '123', name: 'Maria Tutor 2', email: 'tutor2@hispanidad.com', role: 'TUTOR', classId: 'cl2' },
-  ],
-  cycles: [
-    { id: 'c1', name: 'Infantil (3, 4, 5 años)' },
-    { id: 'c2', name: 'Primaria - 1º Ciclo (1º y 2º)' },
-    { id: 'c3', name: 'Primaria - 2º Ciclo (3º y 4º)' },
-    { id: 'c4', name: 'Primaria - 3º Ciclo (5º y 6º)' },
-    { id: 'c5', name: 'ESO - 1º Ciclo (1º y 2º)' },
-    { id: 'c6', name: 'ESO - 2º Ciclo (3º y 4º)' }
-  ],
-  classes: [
-    { id: 'cl1', name: '1º A Primaria', cycleId: 'c2', tutorId: 'u2' },
-    { id: 'cl2', name: '3º B ESO', cycleId: 'c6', tutorId: 'u4' },
-  ],
-  students: [
-    { id: 's1', name: 'Pepito Pérez', classId: 'cl1' },
-    { id: 's2', name: 'Juanita López', classId: 'cl1' },
-  ],
-  excursions: [],
-  participations: []
-};
-
-// --- Helper Funciones ---
-const readDb = () => {
-  if (!fs.existsSync(DB_FILE)) {
-    fs.writeFileSync(DB_FILE, JSON.stringify(INITIAL_DATA, null, 2));
-    return INITIAL_DATA;
-  }
-  try {
-    const data = fs.readFileSync(DB_FILE, 'utf8');
-    return JSON.parse(data);
-  } catch (err) {
-    console.error("Error leyendo DB:", err);
-    return INITIAL_DATA;
-  }
-};
-
-const writeDb = (data) => {
-  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
-};
-
-// --- API Endpoints ---
-
-// 1. Obtener todo (Initial Load)
-app.get('/api/db', (req, res) => {
-  const data = readDb();
-  res.json(data);
-});
-
-// 2. Guardar entidad genérica (Create/Update)
-app.post('/api/sync/:entity', (req, res) => {
-  const { entity } = req.params; // users, students, etc.
-  const item = req.body;
-  const db = readDb();
-
-  if (!db[entity]) db[entity] = [];
-
-  const index = db[entity].findIndex(x => x.id === item.id);
-  if (index >= 0) {
-    db[entity][index] = item; // Update
-  } else {
-    db[entity].push(item); // Create
-  }
-
-  writeDb(db);
-  
-  // EMITIR EVENTO SOCKET
-  io.emit('db_update', { entity, action: 'update' });
-  
-  res.json({ success: true });
-});
-
-// 3. Borrar entidad
-app.delete('/api/sync/:entity/:id', (req, res) => {
-  const { entity, id } = req.params;
-  const db = readDb();
-
-  if (db[entity]) {
-    db[entity] = db[entity].filter(x => x.id !== id);
-    writeDb(db);
-    
-    // EMITIR EVENTO SOCKET
-    io.emit('db_update', { entity, action: 'delete', id });
-  }
-  res.json({ success: true });
-});
-
-// 4. Restaurar Backup Completo
-app.post('/api/restore', (req, res) => {
-  const fullData = req.body;
-  if(fullData.users && fullData.excursions) {
-    writeDb(fullData);
-    
-    // EMITIR EVENTO SOCKET (Full reload)
-    io.emit('db_update', { entity: 'all', action: 'restore' });
-    
-    res.json({ success: true });
-  } else {
-    res.status(400).json({ error: "Formato inválido" });
-  }
-});
 
 // --- CATCH-ALL ROUTE ---
 app.get('*', (req, res) => {
@@ -153,7 +223,6 @@ app.get('*', (req, res) => {
 
 // USAR httpServer EN LUGAR DE app.listen
 httpServer.listen(PORT, () => {
-  console.log(`✅ Servidor Todo-en-Uno (HTTP + WebSocket) corriendo en http://localhost:${PORT}`);
-  console.log(`📁 Base de datos: ${DB_FILE}`);
-  console.log(`🌍 Sirviendo frontend desde: ../dist`);
+  console.log(`✅ Servidor Central ERP (HTTP + WebSocket) corriendo en http://localhost:${PORT}`);
+  console.log(`📁 Base de datos: ${DB_PATH}`);
 });
