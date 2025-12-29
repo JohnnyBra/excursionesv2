@@ -81,6 +81,11 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   const [cyclesList, setCyclesList] = useState(db.cycles);
   const [classesList, setClassesList] = useState(db.classes);
 
+  // PROXY DATA
+  const [proxyClasses, setProxyClasses] = useState<ClassGroup[]>([]);
+  const [proxyStudents, setProxyStudents] = useState<Student[]>([]);
+  const [selectedProxyStudentIds, setSelectedProxyStudentIds] = useState<Set<string>>(new Set());
+
   // Participants View State
   const [participants, setParticipants] = useState<Participation[]>([]);
   const [studentsMap, setStudentsMap] = useState<Record<string, Student>>({});
@@ -91,6 +96,15 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   // EFECTO PRINCIPAL DE CARGA DE DATOS
   useEffect(() => {
     loadData();
+
+    // Cargar clases del proxy
+    fetch('/api/proxy/classes')
+        .then(res => res.json())
+        .then(data => {
+            if(Array.isArray(data)) setProxyClasses(data);
+        })
+        .catch(err => console.error("Error loading proxy classes", err));
+
     const students = db.getStudents();
     const map: Record<string, Student> = {};
     students.forEach(s => map[s.id] = s);
@@ -318,11 +332,40 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
 
     if (isEditing || activeTab === 'budget') {
       const exists = excursions.find(e => e.id === formData.id);
+
+      // LOGICA DE PROXY: Si estamos creando/editando una excursión de clase usando proxy
+      if (formData.scope === ExcursionScope.CLASE && formData.targetId) {
+         // 1. Asegurar que la clase existe en local
+         const selectedProxyClass = proxyClasses.find(c => c.id === formData.targetId);
+         if (selectedProxyClass) {
+             // Verificar si ya existe o actualizar
+             const existingClass = db.getClasses().find(c => c.id === selectedProxyClass.id);
+             if (!existingClass) db.addClass(selectedProxyClass);
+             else db.updateClass(selectedProxyClass);
+         }
+
+         // 2. Asegurar que los alumnos seleccionados existen en local
+         if (proxyStudents.length > 0) {
+             proxyStudents.forEach(st => {
+                 if (selectedProxyStudentIds.has(st.id)) {
+                     const existingSt = db.getStudents().find(s => s.id === st.id);
+                     if (!existingSt) db.addStudent(st);
+                     else db.updateStudent(st);
+                 }
+             });
+         }
+      }
+
       if (exists) {
         db.updateExcursion(excursionToSave);
         addToast('Guardado correctamente', 'success');
       } else {
-        db.addExcursion(excursionToSave);
+        // Usar la lista explicita de IDs si estamos en modo creación con proxy
+        const explicitIds = (formData.scope === ExcursionScope.CLASE && proxyStudents.length > 0)
+                            ? Array.from(selectedProxyStudentIds)
+                            : undefined;
+
+        db.addExcursion(excursionToSave, explicitIds);
         addToast('Creada correctamente', 'success');
       }
 
@@ -863,17 +906,73 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                         <option value={ExcursionScope.CLASE}>Clase</option>
                                     </select>
                                     {(formData.scope !== ExcursionScope.GLOBAL) && (
-                                        <select className="border p-2 rounded flex-1" value={formData.targetId} onChange={e => setFormData({...formData, targetId: e.target.value})} disabled={user?.role === UserRole.TUTOR}>
+                                        <select
+                                            className="border p-2 rounded flex-1"
+                                            value={formData.targetId}
+                                            onChange={e => {
+                                                const newTargetId = e.target.value;
+                                                setFormData({...formData, targetId: newTargetId});
+
+                                                // Si seleccionamos clase, cargar alumnos del proxy
+                                                if (formData.scope === ExcursionScope.CLASE && newTargetId) {
+                                                    fetch(`/api/proxy/students?classId=${newTargetId}`) // Asumimos filtro en backend o filtramos aquí
+                                                        .then(res => res.json())
+                                                        .then(allStudents => {
+                                                            // Si el endpoint devuelve todos, filtramos manualmente
+                                                            let classStudents = allStudents;
+                                                            if (Array.isArray(allStudents)) {
+                                                                // Intento filtrar por si acaso el backend devuelve todo
+                                                                const filtered = allStudents.filter((s: any) => s.classId === newTargetId);
+                                                                if (filtered.length > 0) classStudents = filtered;
+                                                                // Si no hay filtro (mock simple), usamos lo que llegue
+                                                            }
+                                                            setProxyStudents(classStudents);
+                                                            // Seleccionar todos por defecto
+                                                            setSelectedProxyStudentIds(new Set(classStudents.map((s: any) => s.id)));
+                                                        })
+                                                        .catch(console.error);
+                                                }
+                                            }}
+                                            disabled={user?.role === UserRole.TUTOR}
+                                        >
                                             <option value="">Seleccionar...</option>
                                             {formData.scope === ExcursionScope.CICLO ?
                                                 cyclesList.map(c => <option key={c.id} value={c.id}>{c.name}</option>)
                                                 :
-                                                classesList.map(c => <option key={c.id} value={c.id}>{c.name}</option>)
+                                                // USAR PROXY CLASSES SI ESTAMOS EN MODO CLASE
+                                                (formData.scope === ExcursionScope.CLASE ? proxyClasses : classesList).map(c => <option key={c.id} value={c.id}>{c.name}</option>)
                                             }
                                         </select>
                                     )}
                                 </div>
                              </div>
+
+                             {/* LISTA DE ALUMNOS PROXY PARA SELECCIONAR */}
+                             {formData.scope === ExcursionScope.CLASE && proxyStudents.length > 0 && (
+                                 <div className="col-span-2 bg-blue-50 p-4 rounded border border-blue-100 mt-2">
+                                     <h4 className="font-semibold text-blue-800 mb-2">Confirmar Asistentes (Proxy)</h4>
+                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto">
+                                         {proxyStudents.map(st => (
+                                             <label key={st.id} className="flex items-center gap-2 text-sm bg-white p-2 rounded border cursor-pointer hover:bg-gray-50">
+                                                 <input
+                                                    type="checkbox"
+                                                    checked={selectedProxyStudentIds.has(st.id)}
+                                                    onChange={e => {
+                                                        const newSet = new Set(selectedProxyStudentIds);
+                                                        if (e.target.checked) newSet.add(st.id);
+                                                        else newSet.delete(st.id);
+                                                        setSelectedProxyStudentIds(newSet);
+                                                    }}
+                                                 />
+                                                 <span className="truncate">{st.name}</span>
+                                             </label>
+                                         ))}
+                                     </div>
+                                     <div className="text-right text-xs text-blue-600 mt-1">
+                                         {selectedProxyStudentIds.size} seleccionados de {proxyStudents.length}
+                                     </div>
+                                 </div>
+                             )}
                         </div>
 
                         {!isFieldDisabled('title') && (

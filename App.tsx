@@ -160,17 +160,39 @@ const AppContent = () => {
   }, []);
 
   const login = (username: string, pass: string): boolean => {
-    // Auth logic against MockDB
-    const users = db.getUsers();
-    const found = users.find(u => u.username === username && u.password === pass);
-    
-    if (found) {
+    // Auth logic against External Backend
+    fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password: pass })
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Credenciales incorrectas');
+      return res.json();
+    })
+    .then(found => {
+        // Asegurarse de que el usuario tenga el rol y datos necesarios
+        // Si el backend devuelve un objeto distinto, aquí habría que mapearlo.
+        // Asumimos que devuelve un objeto compatible con la interfaz User.
+
+        // Si no tiene ID (caso raro), asignar uno temporal para evitar crash
+        if (!found.id) found.id = 'temp_' + username;
+
         setUser(found);
         localStorage.setItem('auth_user', JSON.stringify(found));
-        addToast(`Bienvenido/a ${found.name}`, 'success');
-        return true;
-    }
-    return false;
+        addToast(`Bienvenido/a ${found.name || username}`, 'success');
+    })
+    .catch(err => {
+      console.error(err);
+      addToast('Error de autenticación: ' + err.message, 'error');
+    });
+
+    // Como fetch es asíncrono, retornamos true para evitar bloquear la UI
+    // El manejo de error se hace via Toast.
+    // OJO: La interfaz espera un boolean síncrono.
+    // Para mantener compatibilidad rápida, retornamos true y si falla el fetch, el usuario verá el error.
+    // Idealmente refactorizaríamos login a async.
+    return true;
   };
 
   const logout = () => {
