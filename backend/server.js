@@ -5,10 +5,15 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const http = require('http'); // Importar HTTP nativo
 const { Server } = require('socket.io'); // Importar Socket.io
+const axios = require('axios'); // Importar Axios
 
 const app = express();
 const PORT = 3005;
 const DB_FILE = path.join(__dirname, 'database.json');
+
+// --- CONSTANTES PRISMA ---
+const PRISMA_URL = 'http://localhost:3020';
+const API_SECRET = 'SECRET_KEY_123'; // En producción esto iría en .env
 
 // --- CONFIGURACIÓN SOCKET.IO ---
 const httpServer = http.createServer(app); // Envolver app express
@@ -146,6 +151,66 @@ app.post('/api/restore', (req, res) => {
   }
 });
 
+// --- PROXY ENDPOINTS (FASE 1) ---
+
+// Login Proxy
+app.post('/api/proxy/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    // Llamada a PrismaEdu
+    const response = await axios.post(`${PRISMA_URL}/api/auth/external-check`, {
+      username,
+      password
+    });
+
+    // Retornamos la respuesta tal cual
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error en Proxy Login:', error.message);
+    if (error.response) {
+      res.status(error.response.status).json(error.response.data);
+    } else {
+      res.status(500).json({ error: 'Error de conexión con PrismaEdu' });
+    }
+  }
+});
+
+// Classes Proxy
+app.get('/api/proxy/classes', async (req, res) => {
+  try {
+    const response = await axios.get(`${PRISMA_URL}/api/export/classes`, {
+      headers: { 'Authorization': `Bearer ${API_SECRET}` }
+    });
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error en Proxy Classes:', error.message);
+    if (error.response) {
+      res.status(error.response.status).json(error.response.data);
+    } else {
+      res.status(500).json({ error: 'Error obteniendo clases externas' });
+    }
+  }
+});
+
+// Students Proxy
+app.get('/api/proxy/students', async (req, res) => {
+  try {
+    const response = await axios.get(`${PRISMA_URL}/api/export/students`, {
+      headers: { 'Authorization': `Bearer ${API_SECRET}` }
+    });
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error en Proxy Students:', error.message);
+    if (error.response) {
+      res.status(error.response.status).json(error.response.data);
+    } else {
+      res.status(500).json({ error: 'Error obteniendo alumnos externos' });
+    }
+  }
+});
+
+
 // --- CATCH-ALL ROUTE ---
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'));
@@ -156,4 +221,5 @@ httpServer.listen(PORT, () => {
   console.log(`✅ Servidor Todo-en-Uno (HTTP + WebSocket) corriendo en http://localhost:${PORT}`);
   console.log(`📁 Base de datos: ${DB_FILE}`);
   console.log(`🌍 Sirviendo frontend desde: ../dist`);
+  console.log(`🔌 Proxy PrismaEdu configurado hacia: ${PRISMA_URL}`);
 });

@@ -81,6 +81,9 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   const [cyclesList, setCyclesList] = useState(db.cycles);
   const [classesList, setClassesList] = useState(db.classes);
 
+  // New Selectors for Creation Flow
+  const [selectedCycleId, setSelectedCycleId] = useState<string>('');
+
   // Participants View State
   const [participants, setParticipants] = useState<Participation[]>([]);
   const [studentsMap, setStudentsMap] = useState<Record<string, Student>>({});
@@ -152,6 +155,8 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
     
     setExcursions(visible);
     setCyclesList(db.getCycles()); 
+
+    // FASE 2: Clases se cargan desde Proxy al inicio (en db.init), aquí solo refrescamos la vista
     setClassesList(db.getClasses());
   };
 
@@ -203,6 +208,10 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       targetId: user?.role === UserRole.TUTOR ? currentUser?.classId || '' : '',
       creatorId: user?.id || ''
     };
+
+    // Reset selections
+    setSelectedCycleId('');
+
     setSelectedExcursion(newExcursion);
     setFormData(newExcursion);
     setParticipants([]); 
@@ -839,39 +848,98 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                              </div>
                              
                              <div className="col-span-2 bg-gray-50 p-4 rounded border">
-                                <label className="label-sm mb-2 block">Alcance</label>
-                                <div className="flex gap-2">
-                                    <select
-                                        className="border p-2 rounded flex-1"
-                                        value={formData.scope}
-                                        onChange={e => {
-                                            const newScope = e.target.value as ExcursionScope;
-                                            let newTargetId = '';
-                                            if (user?.role === UserRole.TUTOR) {
-                                                if (newScope === ExcursionScope.CICLO) {
-                                                    const myClass = classesList.find(c => c.id === currentUser?.classId) || db.getClasses().find(c => c.id === currentUser?.classId);
-                                                    newTargetId = myClass?.cycleId || '';
-                                                } else if (newScope === ExcursionScope.CLASE) {
-                                                    newTargetId = currentUser?.classId || '';
+                                <label className="label-sm mb-2 block">Destinatarios (Filtros)</label>
+                                <div className="space-y-3">
+                                    {/* SELECTOR INTELIGENTE: FASE 2 */}
+
+                                    {/* 1. Selección de Ciclo (Filtro 1) */}
+                                    <div>
+                                        <label className="text-xs text-gray-500 font-semibold uppercase">Filtro 1: Ciclo (Opcional)</label>
+                                        <select
+                                            className="input-field mt-1"
+                                            value={selectedCycleId}
+                                            disabled={user?.role === UserRole.TUTOR} // Tutor está atado a su ciclo/clase normalmente, pero si queremos darle libertad, quitar disabled
+                                            onChange={e => {
+                                                const cId = e.target.value;
+                                                setSelectedCycleId(cId);
+
+                                                // Si selecciona un ciclo, por defecto el scope es CICLO y el target ese ciclo
+                                                if (cId) {
+                                                    setFormData({ ...formData, scope: ExcursionScope.CICLO, targetId: cId });
+                                                } else {
+                                                    // Si borra ciclo, reset scope
+                                                    setFormData({ ...formData, scope: ExcursionScope.GLOBAL, targetId: '' });
                                                 }
-                                            }
-                                            setFormData({...formData, scope: newScope, targetId: newTargetId});
-                                        }}
-                                    >
-                                        {user?.role !== UserRole.TUTOR && <option value={ExcursionScope.GLOBAL}>Global</option>}
-                                        <option value={ExcursionScope.CICLO}>Ciclo</option>
-                                        <option value={ExcursionScope.CLASE}>Clase</option>
-                                    </select>
-                                    {(formData.scope !== ExcursionScope.GLOBAL) && (
-                                        <select className="border p-2 rounded flex-1" value={formData.targetId} onChange={e => setFormData({...formData, targetId: e.target.value})} disabled={user?.role === UserRole.TUTOR}>
-                                            <option value="">Seleccionar...</option>
-                                            {formData.scope === ExcursionScope.CICLO ?
-                                                cyclesList.map(c => <option key={c.id} value={c.id}>{c.name}</option>)
-                                                :
-                                                classesList.map(c => <option key={c.id} value={c.id}>{c.name}</option>)
+                                            }}
+                                        >
+                                            <option value="">-- Todos los Ciclos --</option>
+                                            {cyclesList.map(c => (
+                                                <option key={c.id} value={c.id}>{c.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* 2. Selección de Clase (Filtro 2) */}
+                                    <div>
+                                        <label className="text-xs text-gray-500 font-semibold uppercase">Filtro 2: Clase Específica</label>
+                                        <select
+                                            className="input-field mt-1"
+                                            value={formData.scope === ExcursionScope.CLASE ? formData.targetId : ''}
+                                            disabled={user?.role === UserRole.TUTOR && !selectedCycleId} // Permitir si es tutor cambiar entre SU clase y SU ciclo
+                                            onChange={async (e) => {
+                                                const clId = e.target.value;
+                                                if (clId) {
+                                                    // Si selecciona clase, el scope pasa a ser CLASE
+                                                    setFormData({ ...formData, scope: ExcursionScope.CLASE, targetId: clId });
+
+                                                    // FASE 2: AUTO-RELLENADO DE ALUMNOS DESDE PROXY
+                                                    // Traemos alumnos del proxy (todos) y filtramos por esta clase
+                                                    // O idealmente el proxy soportaría ?classId=... pero mockDb fetchProxyStudents trae todos
+                                                    addToast('Cargando alumnos de PrismaEdu...', 'info');
+                                                    const proxyStudents = await db.fetchProxyStudents();
+
+                                                    // Filtramos
+                                                    const classStudents = proxyStudents.filter((s: any) => s.classId === clId);
+
+                                                    // Asegurar que existen en local
+                                                    classStudents.forEach((s: any) => {
+                                                        const exists = db.getStudents().find(ls => ls.id === s.id);
+                                                        if (!exists) {
+                                                            db.addStudent({
+                                                                id: s.id,
+                                                                name: `${s.name} ${s.surnames || ''}`.trim(),
+                                                                classId: s.classId
+                                                            });
+                                                        }
+                                                    });
+
+                                                    // Actualizar estimación
+                                                    setFormData(prev => ({ ...prev, estimatedStudents: classStudents.length }));
+                                                    addToast(`${classStudents.length} alumnos cargados`, 'success');
+
+                                                } else {
+                                                    // Si quita la clase, vuelve al ciclo seleccionado (si hay) o Global
+                                                    if (selectedCycleId) {
+                                                        setFormData({ ...formData, scope: ExcursionScope.CICLO, targetId: selectedCycleId });
+                                                    } else {
+                                                        setFormData({ ...formData, scope: ExcursionScope.GLOBAL, targetId: '' });
+                                                    }
+                                                }
+                                            }}
+                                        >
+                                            <option value="">-- Toda la selección anterior --</option>
+                                            {classesList
+                                                .filter(c => !selectedCycleId || c.cycleId === selectedCycleId)
+                                                .map(c => (
+                                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                                ))
                                             }
                                         </select>
-                                    )}
+                                    </div>
+
+                                    <div className="text-xs text-blue-600 mt-1">
+                                        Alcance actual: <strong>{getScopeLabel(formData.scope || '', formData.targetId)}</strong>
+                                    </div>
                                 </div>
                              </div>
                         </div>

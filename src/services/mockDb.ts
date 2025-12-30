@@ -57,7 +57,7 @@ const generateParticipationsForExcursion = (exc: Excursion) => {
 // --- Helper Fetch ---
 const apiCall = async (endpoint: string, method: string = 'GET', body?: any) => {
   try {
-    const headers = { 'Content-Type': 'application/json' };
+    const headers: HeadersInit = { 'Content-Type': 'application/json' };
     const config: RequestInit = { method, headers };
     if (body) config.body = JSON.stringify(body);
     
@@ -91,9 +91,35 @@ const notifyListeners = () => {
 
 const fetchAndLoadData = async () => {
     try {
+      // 1. Cargar DB local (excursiones, usuarios locales, etc)
       const data = await apiCall('/db');
       if (data) {
         localState = data;
+
+        // 2. FASE 2: Cargar CLASES desde Proxy PrismaEdu
+        // Esto asegura que siempre tengamos las clases actualizadas al iniciar
+        try {
+            const proxyClasses = await apiCall('/proxy/classes');
+            if (proxyClasses && Array.isArray(proxyClasses)) {
+                // Mapear al formato local si es necesario, asumimos compatibilidad o mapeo simple
+                // Prisma podría devolver campos distintos, aquí unificamos
+                const mappedClasses = proxyClasses.map((c: any) => ({
+                    id: c.id,
+                    name: c.name,
+                    cycleId: c.cycleId,
+                    tutorId: c.tutorId || undefined // Si viene del proxy
+                }));
+
+                // Actualizamos localState.classes
+                // Opción A: Reemplazar todo. Opción B: Merge.
+                // Reemplazamos porque Prisma es la fuente de la verdad para estructura escolar.
+                localState.classes = mappedClasses;
+                console.log(`✅ ${mappedClasses.length} Clases cargadas desde PrismaEdu`);
+            }
+        } catch (proxyErr) {
+            console.error("Error cargando clases de proxy:", proxyErr);
+        }
+
         console.log("Datos sincronizados con servidor via Socket/Init");
         notifyListeners();
         return true;
@@ -119,6 +145,27 @@ export const db = {
         // Fallback
         if(localState.cycles.length === 0) localState.cycles = MOCK_CYCLES;
     }
+  },
+
+  // --- Proxy Methods ---
+  loginProxy: async (username: string, pass: string) => {
+      try {
+          const res = await apiCall('/proxy/login', 'POST', { username, password: pass });
+          return res; // { success: true, user: ... }
+      } catch (e) {
+          console.error("Proxy Login Error", e);
+          return { success: false };
+      }
+  },
+
+  fetchProxyStudents: async () => {
+      try {
+          const res = await apiCall('/proxy/students');
+          return res || [];
+      } catch (e) {
+          console.error("Proxy Students Error", e);
+          return [];
+      }
   },
 
   connectSocket: () => {
