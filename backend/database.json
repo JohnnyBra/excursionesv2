@@ -33,6 +33,15 @@
       "email": "tutor2@hispanidad.com",
       "role": "TUTOR",
       "classId": "cl2"
+    },
+    {
+      "id": "u_prisma_1",
+      "username": "profesor",
+      "name": "Profesor profesor (Prisma)",
+      "email": "",
+      "role": "TUTOR",
+      "classId": "cl_prisma_1",
+      "password": ""
     }
   ],
   "cycles": [
