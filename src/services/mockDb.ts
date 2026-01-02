@@ -3,7 +3,7 @@ import { io, Socket } from 'socket.io-client';
 
 // --- API CONFIG ---
 const API_URL = '/api';
-const SOCKET_URL = 'http://localhost:3005'; // URL directa del backend
+const SOCKET_URL = import.meta.env.DEV ? 'http://localhost:3005' : undefined;
 
 // Cache local
 let localState = {
