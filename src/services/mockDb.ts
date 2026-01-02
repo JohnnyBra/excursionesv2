@@ -253,6 +253,21 @@ export const db = {
 
           if (!res) return { success: false, message: "Error de conexión con el servidor" };
 
+          // Fix: Normalize response if it's flat
+          if (res.success && !res.user) {
+              return {
+                  success: true,
+                  user: {
+                      id: res.id,
+                      username: username.trim(),
+                      name: res.name,
+                      email: res.email,
+                      role: res.role,
+                      classId: res.classId // Might be undefined, which is fine
+                  }
+              };
+          }
+
           return res; // { success: true, user: ... }
       } catch (e) {
           console.error("Proxy Login Error", e);
