@@ -42,7 +42,7 @@ const Login = () => {
     setError('');
 
     try {
-        const success = await login(username, password);
+        const success = await login(username.trim(), password);
         if (!success) {
             setError('Credenciales incorrectas o servidor no disponible');
         }
@@ -107,6 +107,8 @@ const Login = () => {
                         <UserIcon className="absolute left-3 top-3 text-gray-400" size={18} />
                         <input
                             type="text"
+                            name="username"
+                            autoComplete="username"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             className="w-full pl-10 pr-4 py-3 bg-gray-100 border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition"
@@ -121,6 +123,8 @@ const Login = () => {
                         <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
                         <input
                             type="password"
+                            name="password"
+                            autoComplete="current-password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             className="w-full pl-10 pr-4 py-3 bg-gray-100 border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition"
@@ -354,6 +358,12 @@ const AppContent = () => {
         addToast(`Bienvenido/a ${userMapped.name}`, 'success');
         return true;
     }
+
+    // Warn if specific failure message
+    if (response && response.message) {
+        console.warn("Login failed with message:", response.message);
+    }
+
     return false;
   };
 
