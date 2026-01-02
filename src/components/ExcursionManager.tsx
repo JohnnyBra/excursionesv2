@@ -86,6 +86,21 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   // Report Modal State
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportYear, setReportYear] = useState(new Date().getFullYear());
+  const [reportSort, setReportSort] = useState<'class' | 'trimester'>('class');
+  const [trimesterDates, setTrimesterDates] = useState({
+    t1Start: '', t1End: '',
+    t2Start: '', t2End: '',
+    t3Start: '', t3End: ''
+  });
+
+  // Initialize trimester dates when reportYear changes
+  useEffect(() => {
+    setTrimesterDates({
+        t1Start: `${reportYear}-09-01`, t1End: `${reportYear}-12-22`,
+        t2Start: `${reportYear + 1}-01-08`, t2End: `${reportYear + 1}-03-31`,
+        t3Start: `${reportYear + 1}-04-01`, t3End: `${reportYear + 1}-06-30`
+    });
+  }, [reportYear]);
 
   // Form State
   const [formData, setFormData] = useState<Partial<Excursion>>({});
@@ -195,6 +210,26 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
 
     return result;
   }, [participants, studentsMap, user, currentUser, classesList]);
+
+  const getSortedClasses = (classes: ClassGroup[], cycles: any[]) => {
+    // Helper to get cycle rank
+    const getCycleRank = (cycleId: string) => {
+        const cycle = cycles.find(c => c.id === cycleId);
+        if (!cycle) return 99;
+        const name = cycle.name.toLowerCase();
+        if (name.includes('infantil')) return 1;
+        if (name.includes('primaria')) return 2;
+        if (name.includes('eso') || name.includes('secundaria')) return 3;
+        return 4;
+    };
+
+    return [...classes].sort((a, b) => {
+        const rankA = getCycleRank(a.cycleId);
+        const rankB = getCycleRank(b.cycleId);
+        if (rankA !== rankB) return rankA - rankB;
+        return a.name.localeCompare(b.name, undefined, { numeric: true });
+    });
+  };
 
   const loadData = () => {
     const all = db.getExcursions();
@@ -440,82 +475,211 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   // --- REPORT GENERATION LOGIC ---
 
   const handleGenerateAnnualReport = async (format: 'pdf' | 'csv') => {
-    const startDate = new Date(reportYear, 8, 1);
-    const endDate = new Date(reportYear + 1, 5, 30);
-
-    const filteredExcursions = excursions.filter(ex => {
-        const d = new Date(ex.dateStart);
-        return d >= startDate && d <= endDate;
-    }).sort((a, b) => new Date(a.dateStart).getTime() - new Date(b.dateStart).getTime());
-
-    if (filteredExcursions.length === 0) {
-        addToast('No hay excursiones en ese periodo', 'info');
-        return;
+    // 1. Prepare Date Ranges based on Selection
+    const ranges = [];
+    if (reportSort === 'class') {
+        ranges.push({
+            name: `Curso ${reportYear}/${reportYear + 1}`,
+            start: new Date(reportYear, 8, 1),
+            end: new Date(reportYear + 1, 5, 30)
+        });
+    } else {
+        if (trimesterDates.t1Start) ranges.push({ name: '1º Trimestre', start: new Date(trimesterDates.t1Start), end: new Date(trimesterDates.t1End) });
+        if (trimesterDates.t2Start) ranges.push({ name: '2º Trimestre', start: new Date(trimesterDates.t2Start), end: new Date(trimesterDates.t2End) });
+        if (trimesterDates.t3Start) ranges.push({ name: '3º Trimestre', start: new Date(trimesterDates.t3Start), end: new Date(trimesterDates.t3End) });
     }
 
-    const reportData = filteredExcursions.map(ex => {
-        const parts = db.getParticipations().filter(p => p.excursionId === ex.id);
-        const collected = parts.filter(p => p.paid).reduce((sum, p) => sum + p.amountPaid, 0);
-        
-        const entryCount = parts.filter(p => p.attended).length || parts.filter(p => p.paid).length;
-        
-        const fixedCosts = (ex.costBus || 0) + (ex.costOther || 0);
-        const variableCosts = (ex.costEntry || 0) * entryCount;
-        const totalCost = fixedCosts + variableCosts;
-        
-        return {
-            fecha: new Date(ex.dateStart).toLocaleDateString(),
-            titulo: ex.title,
-            destino: ex.destination,
-            curso: getScopeLabel(ex.scope, ex.targetId),
-            bus: (ex.costBus || 0).toFixed(2),
-            otros: (ex.costOther || 0).toFixed(2),
-            entrada: (ex.costEntry || 0).toFixed(2),
-            precioAlumno: ex.costGlobal.toFixed(2),
-            recaudado: collected.toFixed(2),
-            costeTotal: totalCost.toFixed(2),
-            balance: (collected - totalCost).toFixed(2)
-        };
-    });
+    const allStudents = db.getStudents();
+    const allParticipations = db.getParticipations();
+    const sortedClasses = getSortedClasses(db.getClasses(), db.getCycles());
+
+    // Helper to get excursions for a specific class in a date range
+    const getClassExcursions = (classId: string, start: Date, end: Date) => {
+        const cls = db.getClasses().find(c => c.id === classId);
+        if (!cls) return [];
+
+        return excursions.filter(ex => {
+            const d = new Date(ex.dateStart);
+            if (d < start || d > end) return false;
+
+            // Check Scope
+            if (ex.scope === ExcursionScope.GLOBAL) return true;
+            if (ex.scope === ExcursionScope.CICLO && ex.targetId === cls.cycleId) return true;
+            if (ex.scope === ExcursionScope.CLASE && ex.targetId === classId) return true;
+
+            return false;
+        }).sort((a, b) => new Date(a.dateStart).getTime() - new Date(b.dateStart).getTime());
+    };
 
     if (format === 'pdf') {
         const doc = new jsPDF('l', 'mm', 'a4');
-
         const logoData = await getLogoData(LOGO_URL);
+
+        // Initial Page
         drawPdfHeader(doc, logoData);
-
+        doc.setFontSize(16);
+        doc.text(`Informe Anual de Excursiones`, 14, 35);
         doc.setFontSize(12);
-        doc.text(`Informe Anual de Excursiones - Curso ${reportYear}/${reportYear + 1}`, 40, 35);
+        doc.text(`Curso: ${reportYear}/${reportYear + 1}`, 14, 42);
+        doc.text(`Ordenación: ${reportSort === 'class' ? 'Por Clases' : 'Por Trimestres'}`, 14, 48);
 
-        autoTable(doc, {
-            startY: 45,
-            head: [['Fecha', 'Título', 'Destino', 'Grupo', 'Bus', 'Otros', 'Entrada', 'P.Alumno', 'Ingresos', 'Gastos', 'Balance']],
-            body: reportData.map(r => Object.values(r)),
-            styles: { fontSize: 8 },
-            headStyles: { fillColor: [41, 128, 185] },
-        });
+        let currentY = 55;
 
-        const totalIngresos = reportData.reduce((sum, r) => sum + parseFloat(r.recaudado), 0);
-        const totalGastos = reportData.reduce((sum, r) => sum + parseFloat(r.costeTotal), 0);
-        
-        doc.setFontSize(11);
-        doc.text(`TOTAL INGRESOS: ${totalIngresos.toFixed(2)}€`, 14, (doc as any).lastAutoTable.finalY + 10);
-        doc.text(`TOTAL GASTOS: ${totalGastos.toFixed(2)}€`, 100, (doc as any).lastAutoTable.finalY + 10);
-        doc.text(`BALANCE FINAL: ${(totalIngresos - totalGastos).toFixed(2)}€`, 200, (doc as any).lastAutoTable.finalY + 10);
+        // Iterate Ranges (Year or Trimesters)
+        for (const range of ranges) {
+            // New Page for each Trimester if in Trimester mode, unless it's the first one fitting on page
+            if (range.name !== ranges[0].name) {
+                doc.addPage();
+                drawPdfHeader(doc, logoData);
+                currentY = 35;
+            }
 
-        doc.save(`Informe_Excursiones_${reportYear}-${reportYear+1}.pdf`);
+            doc.setFontSize(14);
+            doc.setTextColor(0, 51, 102);
+            doc.text(range.name, 14, currentY);
+            currentY += 10;
+
+            // Iterate Classes
+            for (const cls of sortedClasses) {
+                const classExcursions = getClassExcursions(cls.id, range.start, range.end);
+
+                if (classExcursions.length > 0) {
+                    // Check if we need a new page for the Class Header
+                    if (currentY > 180) {
+                        doc.addPage();
+                        drawPdfHeader(doc, logoData);
+                        currentY = 35;
+                    }
+
+                    doc.setFontSize(12);
+                    doc.setTextColor(0, 0, 0);
+                    doc.setFont("helvetica", "bold");
+                    doc.text(cls.name, 14, currentY);
+                    doc.setFont("helvetica", "normal");
+
+                    const tableData = classExcursions.map(ex => {
+                        // Calculate data for THIS class context
+                        const parts = allParticipations.filter(p => p.excursionId === ex.id);
+
+                        // Filter participants belonging to this class
+                        const classParts = parts.filter(p => {
+                            const s = allStudents.find(st => st.id === p.studentId);
+                            return s && s.classId === cls.id;
+                        });
+
+                        // "Alumnos que han asistido": attended=true. Fallback to paid if attended not used yet?
+                        // Requirement: "Alumnos que han asistido". Use 'attended' flag.
+                        const attendingStudents = classParts
+                            .filter(p => p.attended)
+                            .map(p => {
+                                const s = allStudents.find(st => st.id === p.studentId);
+                                return s ? getStudentSurname(s.name) : 'Unknown';
+                            })
+                            .join(', ');
+
+                        const entryCount = parts.filter(p => p.attended).length || parts.filter(p => p.paid).length;
+                        // const fixedCosts = (ex.costBus || 0) + (ex.costOther || 0);
+                        // const variableCosts = (ex.costEntry || 0) * entryCount;
+                        // const totalCost = ex.costGlobal * entryCount; // Using rough total or actual? Request: "Coste económico total"
+                        // Usually "Coste Económico Total" implies the Invoice total.
+                        // But per class? I will show the Excursion Total Cost (Global) to avoid confusion, or calculated share?
+                        // Let's show Excursion Total (Fixed + Variable).
+
+                        const excFixed = (ex.costBus || 0) + (ex.costOther || 0);
+                        const excTotal = excFixed + ((ex.costEntry || 0) * entryCount);
+
+                        return [
+                            new Date(ex.dateStart).toLocaleDateString() + ' ' + new Date(ex.dateStart).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                            ex.title,
+                            ex.destination,
+                            getScopeLabel(ex.scope, ex.targetId),
+                            excTotal.toFixed(2) + '€',
+                            ex.costGlobal.toFixed(2) + '€',
+                            attendingStudents || '-',
+                            ex.justification || ''
+                        ];
+                    });
+
+                    autoTable(doc, {
+                        startY: currentY + 2,
+                        head: [['Fecha/Hora', 'Nombre', 'Destino', 'Cursos', 'Coste Total', 'P.Alumno', 'Asistentes (Clase)', 'Justificación']],
+                        body: tableData,
+                        theme: 'grid',
+                        headStyles: { fillColor: [60, 60, 60], fontSize: 8 },
+                        styles: { fontSize: 8, cellPadding: 2 },
+                        columnStyles: {
+                            0: { cellWidth: 25 }, // Fecha
+                            1: { cellWidth: 30 }, // Nombre
+                            2: { cellWidth: 25 }, // Destino
+                            3: { cellWidth: 25 }, // Cursos
+                            4: { cellWidth: 20 }, // Coste T
+                            5: { cellWidth: 15 }, // P.Alum
+                            6: { cellWidth: 60 }, // Asistentes (Wide)
+                            7: { cellWidth: 'auto' } // Justificación
+                        },
+                        // Ensure page break logic works
+                        pageBreak: 'auto',
+                        margin: { top: 35 }
+                    });
+
+                    currentY = (doc as any).lastAutoTable.finalY + 10;
+                }
+            }
+        }
+
+        doc.save(`Informe_Direccion_${reportYear}-${reportYear+1}.pdf`);
     } else {
-        const headers = ['Fecha', 'Título', 'Destino', 'Grupo', 'Coste Bus', 'Otros Gastos', 'Coste Entrada', 'Precio Alumno', 'Ingresos', 'Gastos Totales', 'Balance'];
+        // CSV Generation (Simplified flat list)
+        // Since CSV doesn't support grouping well, we will list all rows sorted by Class -> Date
+        let csvRows: any[] = [];
+
+        for (const range of ranges) {
+             for (const cls of sortedClasses) {
+                 const classExcursions = getClassExcursions(cls.id, range.start, range.end);
+                 for (const ex of classExcursions) {
+                     const parts = allParticipations.filter(p => p.excursionId === ex.id);
+                     const classParts = parts.filter(p => {
+                        const s = allStudents.find(st => st.id === p.studentId);
+                        return s && s.classId === cls.id;
+                     });
+
+                     const attendingStudents = classParts
+                        .filter(p => p.attended)
+                        .map(p => allStudents.find(st => st.id === p.studentId)?.name)
+                        .join('; ');
+
+                     const entryCount = parts.filter(p => p.attended).length || parts.filter(p => p.paid).length;
+                     const excFixed = (ex.costBus || 0) + (ex.costOther || 0);
+                     const excTotal = excFixed + ((ex.costEntry || 0) * entryCount);
+
+                     csvRows.push({
+                         Periodo: range.name,
+                         Clase: cls.name,
+                         Fecha: new Date(ex.dateStart).toLocaleDateString(),
+                         Hora: new Date(ex.dateStart).toLocaleTimeString(),
+                         Nombre: ex.title,
+                         Destino: ex.destination,
+                         CursosImplicados: getScopeLabel(ex.scope, ex.targetId),
+                         CosteTotalExcursion: excTotal.toFixed(2),
+                         CosteAlumno: ex.costGlobal.toFixed(2),
+                         AsistentesClase: attendingStudents,
+                         Justificacion: ex.justification || ''
+                     });
+                 }
+             }
+        }
+
+        const headers = Object.keys(csvRows[0] || {});
         const csvContent = [
             headers.join(';'),
-            ...reportData.map(r => Object.values(r).join(';'))
+            ...csvRows.map(r => Object.values(r).map(v => `"${v}"`).join(';'))
         ].join('\n');
 
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
         link.setAttribute("href", url);
-        link.setAttribute("download", `Informe_Excursiones_${reportYear}-${reportYear+1}.csv`);
+        link.setAttribute("download", `Informe_Direccion_${reportYear}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -743,10 +907,44 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                   <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                       <FileBarChart className="text-blue-600"/> Informe Anual Global
                   </h3>
-                  <div className="mb-6">
+                  <div className="mb-4">
                       <label className="label-sm">Año de Inicio del Curso</label>
                       <input type="number" className="input-field" value={reportYear} onChange={e => setReportYear(parseInt(e.target.value))} />
                   </div>
+                  <div className="mb-6">
+                      <label className="label-sm">Tipo de Informe</label>
+                      <select className="input-field" value={reportSort} onChange={e => setReportSort(e.target.value as 'class' | 'trimester')}>
+                          <option value="class">Por Clases (Anual)</option>
+                          <option value="trimester">Por Trimestres</option>
+                      </select>
+                  </div>
+
+                  {reportSort === 'trimester' && (
+                      <div className="mb-6 space-y-3 bg-gray-50 p-3 rounded">
+                          <div>
+                              <label className="text-xs font-bold text-gray-500 uppercase">1º Trimestre</label>
+                              <div className="flex gap-2">
+                                  <input type="date" className="input-field text-xs" value={trimesterDates.t1Start} onChange={e => setTrimesterDates({...trimesterDates, t1Start: e.target.value})} />
+                                  <input type="date" className="input-field text-xs" value={trimesterDates.t1End} onChange={e => setTrimesterDates({...trimesterDates, t1End: e.target.value})} />
+                              </div>
+                          </div>
+                          <div>
+                              <label className="text-xs font-bold text-gray-500 uppercase">2º Trimestre</label>
+                              <div className="flex gap-2">
+                                  <input type="date" className="input-field text-xs" value={trimesterDates.t2Start} onChange={e => setTrimesterDates({...trimesterDates, t2Start: e.target.value})} />
+                                  <input type="date" className="input-field text-xs" value={trimesterDates.t2End} onChange={e => setTrimesterDates({...trimesterDates, t2End: e.target.value})} />
+                              </div>
+                          </div>
+                          <div>
+                              <label className="text-xs font-bold text-gray-500 uppercase">3º Trimestre</label>
+                              <div className="flex gap-2">
+                                  <input type="date" className="input-field text-xs" value={trimesterDates.t3Start} onChange={e => setTrimesterDates({...trimesterDates, t3Start: e.target.value})} />
+                                  <input type="date" className="input-field text-xs" value={trimesterDates.t3End} onChange={e => setTrimesterDates({...trimesterDates, t3End: e.target.value})} />
+                              </div>
+                          </div>
+                      </div>
+                  )}
+
                   <div className="flex gap-2">
                       <button onClick={() => handleGenerateAnnualReport('pdf')} className="flex-1 py-2 bg-red-500 text-white rounded-lg">PDF</button>
                       <button onClick={() => handleGenerateAnnualReport('csv')} className="flex-1 py-2 bg-green-600 text-white rounded-lg">Excel</button>
@@ -790,7 +988,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
              {mode === 'treasury' ? 'Tesorería' : 'Excursiones'}
           </h2>
           <div className="flex gap-1">
-             {(user?.role === UserRole.DIRECCION || user?.role === UserRole.TESORERIA) && (
+             {(user?.role === UserRole.DIRECCION || user?.role === UserRole.TESORERIA || user?.role === UserRole.ADMIN) && (
                 <button onClick={() => setIsReportModalOpen(true)} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition">
                     <FileBarChart size={18} />
                 </button>
