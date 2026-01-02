@@ -104,7 +104,10 @@ const fetchAndLoadData = async () => {
             ...localState,
             excursions: data.excursions || [],
             participations: data.participations || [],
-            users: data.users || [] // Importante: Cargar usuarios locales (ej. direccion)
+            users: data.users || [], // Importante: Cargar usuarios locales (ej. direccion)
+            classes: data.classes || [],
+            cycles: data.cycles || [],
+            students: data.students || []
         };
 
         // 2. FASE 2: Cargar DATOS MAESTROS desde Proxy PrismaEdu
@@ -122,6 +125,9 @@ const fetchAndLoadData = async () => {
                 // Generar Ciclos Únicos basados en Stage + Cycle
                 const cycleMap = new Map<string, Cycle>();
 
+                // Pre-populate with local cycles to preserve IDs if needed
+                localState.cycles.forEach(c => cycleMap.set(c.id, c));
+
                 rawClasses.forEach(c => {
                     const cycleId = `${c.stage}-${c.cycle}`.replace(/\s+/g, '-').toLowerCase();
                     if (!cycleMap.has(cycleId)) {
@@ -134,14 +140,23 @@ const fetchAndLoadData = async () => {
 
                 localState.cycles = Array.from(cycleMap.values());
 
-                // Mapear Clases
-                // Nota: Prisma no devuelve tutorId directamente en la clase, sino en los usuarios
-                localState.classes = rawClasses.map(c => ({
+                // Mapear Clases Proxy
+                const mappedProxyClasses = rawClasses.map(c => ({
                     id: c.id,
                     name: c.name,
                     cycleId: `${c.stage}-${c.cycle}`.replace(/\s+/g, '-').toLowerCase(),
                     tutorId: '' // Se rellenará al procesar usuarios
                 }));
+
+                // Mergear Clases: Preservar locales
+                const mergedClasses = [...localState.classes];
+                mappedProxyClasses.forEach(pc => {
+                    const exists = mergedClasses.find(c => c.id === pc.id);
+                    if (!exists) {
+                        mergedClasses.push(pc);
+                    }
+                });
+                localState.classes = mergedClasses;
             }
 
             // --- PROCESAR USUARIOS (MERGE CON LOCALES) ---
@@ -191,8 +206,15 @@ const fetchAndLoadData = async () => {
 
             // --- PROCESAR ALUMNOS ---
             if (proxyStudents && Array.isArray(proxyStudents)) {
-                // Asumimos que vienen con { id, name, classId }
-                localState.students = proxyStudents;
+                // Mergear Estudiantes
+                const mergedStudents = [...localState.students];
+                proxyStudents.forEach((ps: Student) => {
+                     const exists = mergedStudents.find(s => s.id === ps.id);
+                     if (!exists) {
+                         mergedStudents.push(ps);
+                     }
+                });
+                localState.students = mergedStudents;
             }
 
             console.log(`✅ Datos PrismaEdu cargados: ${localState.users.length} usuarios, ${localState.classes.length} clases, ${localState.students.length} alumnos.`);

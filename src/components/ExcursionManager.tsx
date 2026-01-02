@@ -189,6 +189,12 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   const handleCreateNew = () => {
     if (user?.role === UserRole.TESORERIA) return; 
 
+    let initialCycleId = '';
+    if (user?.role === UserRole.TUTOR && currentUser?.classId) {
+        const myClass = db.classes.find(c => c.id === currentUser.classId);
+        if (myClass) initialCycleId = myClass.cycleId;
+    }
+
     const newExcursion: Excursion = {
       id: crypto.randomUUID(),
       title: 'Nueva Excursión',
@@ -210,7 +216,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
     };
 
     // Reset selections
-    setSelectedCycleId('');
+    setSelectedCycleId(initialCycleId);
 
     setSelectedExcursion(newExcursion);
     setFormData(newExcursion);
@@ -858,7 +864,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                         <select
                                             className="input-field mt-1"
                                             value={selectedCycleId}
-                                            disabled={user?.role === UserRole.TUTOR} // Tutor está atado a su ciclo/clase normalmente, pero si queremos darle libertad, quitar disabled
+                                            disabled={user?.role === UserRole.TUTOR && !selectedCycleId} // Permitimos si hay ciclo seleccionado (que siempre habrá si es tutor)
                                             onChange={e => {
                                                 const cId = e.target.value;
                                                 setSelectedCycleId(cId);
@@ -873,7 +879,9 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                             }}
                                         >
                                             <option value="">-- Todos los Ciclos --</option>
-                                            {cyclesList.map(c => (
+                                            {cyclesList
+                                                .filter(c => user?.role !== UserRole.TUTOR || c.id === selectedCycleId)
+                                                .map(c => (
                                                 <option key={c.id} value={c.id}>{c.name}</option>
                                             ))}
                                         </select>
@@ -927,9 +935,12 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                                 }
                                             }}
                                         >
-                                            <option value="">-- Toda la selección anterior --</option>
+                                            <option value="">
+                                                {selectedCycleId ? `Todo el ciclo (Todos los grupos)` : '-- Toda la selección anterior --'}
+                                            </option>
                                             {classesList
                                                 .filter(c => !selectedCycleId || c.cycleId === selectedCycleId)
+                                                .filter(c => user?.role !== UserRole.TUTOR || c.id === currentUser?.classId)
                                                 .map(c => (
                                                     <option key={c.id} value={c.id}>{c.name}</option>
                                                 ))
