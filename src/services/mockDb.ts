@@ -91,13 +91,15 @@ const notifyListeners = () => {
 
 const fetchAndLoadData = async () => {
     try {
-      // 1. Cargar DB local (excursiones, particpaciones)
+      // 1. Cargar DB local (excursiones, particpaciones, USUARIOS LOCALES)
       const data = await apiCall('/db');
       if (data) {
+        // Cargar datos locales base
         localState = {
             ...localState,
             excursions: data.excursions || [],
-            participations: data.participations || []
+            participations: data.participations || [],
+            users: data.users || [] // Importante: Cargar usuarios locales (ej. direccion)
         };
 
         // 2. FASE 2: Cargar DATOS MAESTROS desde Proxy PrismaEdu
@@ -137,19 +139,39 @@ const fetchAndLoadData = async () => {
                 }));
             }
 
-            // --- PROCESAR USUARIOS ---
+            // --- PROCESAR USUARIOS (MERGE CON LOCALES) ---
             if (proxyUsers && Array.isArray(proxyUsers)) {
                 const rawUsers: PrismaUser[] = proxyUsers;
 
-                localState.users = rawUsers.map(u => ({
+                // Mapear usuarios proxy a formato interno
+                const mappedProxyUsers = rawUsers.map(u => ({
                     id: u.id,
                     username: u.username,
                     name: u.name,
                     email: u.email,
                     role: u.role, // Asegurar que coincida con enum UserRole
                     classId: u.classId,
-                    password: '' // No necesitamos pass
+                    password: '' // Los usuarios de proxy no traen contraseña
                 }));
+
+                // Mergear: Mantener usuarios locales que tienen password (ej. direccion)
+                // Si hay colisión de IDs, el usuario local tiene prioridad si tiene password
+                const mergedUsers = [...localState.users];
+
+                mappedProxyUsers.forEach(proxyUser => {
+                    const existingIdx = mergedUsers.findIndex(u => u.id === proxyUser.id);
+                    if (existingIdx >= 0) {
+                        // Si existe, solo sobrescribimos si el local NO tiene password (es un caché antiguo)
+                        // Si el local tiene password, lo respetamos (es un usuario local admin)
+                        if (!mergedUsers[existingIdx].password) {
+                            mergedUsers[existingIdx] = proxyUser;
+                        }
+                    } else {
+                        mergedUsers.push(proxyUser);
+                    }
+                });
+
+                localState.users = mergedUsers;
 
                 // Vincular tutores a clases
                 localState.users.forEach(u => {
@@ -204,6 +226,21 @@ export const db = {
   // --- Proxy Methods ---
   loginProxy: async (username: string, pass: string) => {
       try {
+          // 1. Verificar Login Local (para usuarios administradores como 'direccion')
+          // Nota: Solo comprobamos usuarios que tengan contraseña establecida en localState
+          // Los usuarios del proxy tienen password: ''
+          const localUser = localState.users.find(u =>
+             u.username === username &&
+             u.password &&
+             u.password === pass
+          );
+
+          if (localUser) {
+              console.log("✅ Login local exitoso:", localUser.username);
+              return { success: true, user: localUser };
+          }
+
+          // 2. Si no es local, intentar Proxy
           const res = await apiCall('/proxy/login', 'POST', { username, password: pass });
           return res; // { success: true, user: ... }
       } catch (e) {
