@@ -352,7 +352,21 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
     }
   };
 
+  const canEditStudent = (studentId: string) => {
+    if (user?.role === UserRole.DIRECCION || user?.role === UserRole.ADMIN) return true;
+    if (user?.role === UserRole.TUTOR) {
+        const student = studentsMap[studentId];
+        // Check if student exists and their classId matches the current user's classId
+        return student && student.classId === currentUser?.classId;
+    }
+    return false;
+  };
+
   const toggleParticipationStatus = (p: Participation, field: 'authSigned' | 'paid' | 'attended') => {
+    if (!canEditStudent(p.studentId)) {
+        addToast('Solo puedes gestionar alumnos de tu tutoría', 'error');
+        return;
+    }
     if (user?.role === UserRole.TESORERIA) return;
 
     const updated = { ...p, [field]: !p[field] };
@@ -991,22 +1005,28 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {participants.map(p => (
-                                        <tr key={p.id} className="border-t hover:bg-gray-50">
-                                            <td className="px-4 py-3 font-medium">{studentsMap[p.studentId]?.name}</td>
-                                            <td className="px-4 py-3 text-center cursor-pointer" onClick={() => toggleParticipationStatus(p, 'authSigned')}>
-                                                <div className={`w-8 h-8 mx-auto flex items-center justify-center rounded-full ${p.authSigned ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-300'}`}><FileText size={16}/></div>
-                                            </td>
-                                            <td className="px-4 py-3 text-center cursor-pointer" onClick={() => toggleParticipationStatus(p, 'paid')}>
-                                                 <div className={`w-8 h-8 mx-auto flex items-center justify-center rounded-full ${p.paid ? 'bg-green-100 text-green-600' : 'bg-red-50 text-red-300'}`}><DollarSign size={16}/></div>
-                                            </td>
-                                            {isExcursionDayOrPast && (
-                                                <td className="px-4 py-3 text-center cursor-pointer bg-green-50/50" onClick={() => toggleParticipationStatus(p, 'attended')}>
-                                                    {p.attended ? <CheckCircle size={20} className="text-green-500 mx-auto"/> : <div className="w-5 h-5 rounded-full border-2 border-gray-300 mx-auto"></div>}
+                                    {participants.map(p => {
+                                        const isEditable = canEditStudent(p.studentId);
+                                        return (
+                                            <tr key={p.id} className="border-t hover:bg-gray-50">
+                                                <td className="px-4 py-3 font-medium">
+                                                    {studentsMap[p.studentId]?.name}
+                                                    {!isEditable && <span className="ml-2 text-xs text-gray-400 border border-gray-200 px-1 rounded">Otra clase</span>}
                                                 </td>
-                                            )}
-                                        </tr>
-                                    ))}
+                                                <td className={`px-4 py-3 text-center ${isEditable ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`} onClick={() => isEditable && toggleParticipationStatus(p, 'authSigned')}>
+                                                    <div className={`w-8 h-8 mx-auto flex items-center justify-center rounded-full ${p.authSigned ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-300'}`}><FileText size={16}/></div>
+                                                </td>
+                                                <td className={`px-4 py-3 text-center ${isEditable ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`} onClick={() => isEditable && toggleParticipationStatus(p, 'paid')}>
+                                                    <div className={`w-8 h-8 mx-auto flex items-center justify-center rounded-full ${p.paid ? 'bg-green-100 text-green-600' : 'bg-red-50 text-red-300'}`}><DollarSign size={16}/></div>
+                                                </td>
+                                                {isExcursionDayOrPast && (
+                                                    <td className={`px-4 py-3 text-center bg-green-50/50 ${isEditable ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`} onClick={() => isEditable && toggleParticipationStatus(p, 'attended')}>
+                                                        {p.attended ? <CheckCircle size={20} className="text-green-500 mx-auto"/> : <div className="w-5 h-5 rounded-full border-2 border-gray-300 mx-auto"></div>}
+                                                    </td>
+                                                )}
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                              </table>
                              {!isExcursionDayOrPast && (

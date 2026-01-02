@@ -42,6 +42,15 @@
       "role": "TUTOR",
       "classId": "cl_prisma_1",
       "password": ""
+    },
+    {
+      "id": "tutor_a",
+      "username": "tutora",
+      "name": "Tutor A",
+      "email": "tutora@test.com",
+      "role": "TUTOR",
+      "classId": "class_a",
+      "password": "123"
     }
   ],
   "cycles": [
@@ -82,6 +91,24 @@
       "name": "3º B ESO",
       "cycleId": "c6",
       "tutorId": "u4"
+    },
+    {
+      "id": "class_a",
+      "name": "5A",
+      "stage": "PRIMARIA",
+      "cycle": "CICLO_3",
+      "level": "5",
+      "group": "A",
+      "tutorId": "tutor_a"
+    },
+    {
+      "id": "class_b",
+      "name": "5B",
+      "stage": "PRIMARIA",
+      "cycle": "CICLO_3",
+      "level": "5",
+      "group": "B",
+      "tutorId": "tutor_b"
     }
   ],
   "students": [
@@ -94,8 +121,50 @@
       "id": "s2",
       "name": "Juanita López",
       "classId": "cl1"
+    },
+    {
+      "id": "student_a",
+      "name": "Student A",
+      "classId": "class_a"
+    },
+    {
+      "id": "student_b",
+      "name": "Student B",
+      "classId": "class_b"
     }
   ],
-  "excursions": [],
-  "participations": []
+  "excursions": [
+    {
+      "id": "ex_global",
+      "title": "Global Trip",
+      "description": "Fun",
+      "destination": "Park",
+      "dateStart": "2024-10-10T10:00",
+      "dateEnd": "2024-10-10T14:00",
+      "scope": "GLOBAL",
+      "creatorId": "admin",
+      "costBus": 100,
+      "costEntry": 0,
+      "costGlobal": 10,
+      "estimatedStudents": 10
+    }
+  ],
+  "participations": [
+    {
+      "id": "p_a",
+      "studentId": "student_a",
+      "excursionId": "ex_global",
+      "authSigned": false,
+      "paid": false,
+      "attended": false
+    },
+    {
+      "id": "p_b",
+      "studentId": "student_b",
+      "excursionId": "ex_global",
+      "authSigned": false,
+      "paid": false,
+      "attended": false
+    }
+  ]
 }

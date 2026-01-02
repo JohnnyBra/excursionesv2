@@ -224,8 +224,12 @@ app.get('/api/proxy/students', async (req, res) => {
 
 
 // --- CATCH-ALL ROUTE ---
-app.get('*', (req, res) => {
+app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
+
+app.get(/^\/(.*)/, (req, res) => {
+    res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
 // USAR httpServer EN LUGAR DE app.listen
