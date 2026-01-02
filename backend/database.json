@@ -3,10 +3,10 @@
     {
       "id": "u1",
       "username": "direccion",
-      "password": "123",
       "name": "Ana Directora",
       "email": "admin@hispanidad.com",
-      "role": "DIRECCION"
+      "role": "DIRECCION",
+      "password": ""
     },
     {
       "id": "u2",

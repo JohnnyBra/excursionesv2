@@ -4,7 +4,7 @@ import { UserRole } from '../types';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   LogOut, LayoutDashboard, Bus, Users, 
-  Wallet, Settings, Menu 
+  Wallet, Settings, Menu, Globe
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -89,6 +89,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
           <div className="pt-4 mt-4 border-t border-gray-100">
             <NavItem icon={Settings} label="Configuración" path="/settings" />
+            <a
+              href="https://prisma.bibliohispa.es/"
+              className="flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-colors text-gray-600 hover:bg-gray-100"
+            >
+              <Globe size={20} />
+              <span className="font-medium">Portal Matriz</span>
+            </a>
           </div>
         </nav>
 
