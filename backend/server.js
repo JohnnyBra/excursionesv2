@@ -145,6 +145,7 @@ const prismaHeaders = {
 
 // Login Proxy (Manual)
 app.post('/api/proxy/login', async (req, res) => {
+  console.log(`🔑 Intento de login para usuario: ${req.body.username}`);
   try {
     const { username, password } = req.body;
 
@@ -154,11 +155,14 @@ app.post('/api/proxy/login', async (req, res) => {
       password
     }, { headers: prismaHeaders });
 
+    console.log(`✅ Login exitoso en PrismaEdu para: ${username}`);
     // Retornamos la respuesta tal cual
     res.json(response.data);
   } catch (error) {
-    console.error('Error en Proxy Login:', error.message);
+    console.error('❌ Error en Proxy Login:', error.message);
     if (error.response) {
+      console.error('   Status:', error.response.status);
+      console.error('   Data:', JSON.stringify(error.response.data));
       res.status(error.response.status).json(error.response.data);
     } else {
       res.status(500).json({ error: 'Error de conexión con PrismaEdu' });

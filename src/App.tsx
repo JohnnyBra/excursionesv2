@@ -12,7 +12,7 @@ import { Lock, User as UserIcon, Save, Loader, ShieldCheck } from 'lucide-react'
 // -- Auth Context --
 interface AuthContextType {
   user: User | null;
-  login: (u: string, p: string) => Promise<boolean>;
+  login: (u: string, p: string) => Promise<{success: boolean, message?: string}>;
   loginWithGoogle: (email: string) => Promise<boolean>;
   logout: () => void;
 }
@@ -42,9 +42,9 @@ const Login = () => {
     setError('');
 
     try {
-        const success = await login(username, password);
-        if (!success) {
-            setError('Credenciales incorrectas o servidor no disponible');
+        const result = await login(username, password);
+        if (!result.success) {
+            setError(result.message || 'Credenciales incorrectas o servidor no disponible');
         }
     } catch(e) {
         setError('Error de conexión');
@@ -319,7 +319,7 @@ const AppContent = () => {
     initApp();
   }, []);
 
-  const login = async (username: string, pass: string): Promise<boolean> => {
+  const login = async (username: string, pass: string): Promise<{success: boolean, message?: string}> => {
     // FASE 3: Login via Proxy
     const response = await db.loginProxy(username, pass);
     
@@ -352,9 +352,9 @@ const AppContent = () => {
         setUser(userMapped);
         localStorage.setItem('auth_user', JSON.stringify(userMapped));
         addToast(`Bienvenido/a ${userMapped.name}`, 'success');
-        return true;
+        return { success: true };
     }
-    return false;
+    return { success: false, message: response?.message || 'Credenciales incorrectas' };
   };
 
   const loginWithGoogle = async (email: string): Promise<boolean> => {

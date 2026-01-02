@@ -205,10 +205,11 @@ export const db = {
   loginProxy: async (username: string, pass: string) => {
       try {
           const res = await apiCall('/proxy/login', 'POST', { username, password: pass });
+          if (!res) return { success: false, message: "Error de red o servidor no disponible" };
           return res; // { success: true, user: ... }
       } catch (e) {
           console.error("Proxy Login Error", e);
-          return { success: false };
+          return { success: false, message: "Error interno de cliente" };
       }
   },
 
