@@ -13,6 +13,7 @@ import { Lock, User as UserIcon, Save, Loader, ShieldCheck } from 'lucide-react'
 interface AuthContextType {
   user: User | null;
   login: (u: string, p: string) => Promise<boolean>;
+  loginWithGoogle: (email: string) => Promise<boolean>;
   logout: () => void;
 }
 
@@ -27,13 +28,15 @@ export const useAuth = () => {
 // -- Components --
 
 const Login = () => {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [view, setView] = useState<'default' | 'google'>('default');
+  const [googleEmail, setGoogleEmail] = useState('');
   
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleManualLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
@@ -48,6 +51,29 @@ const Login = () => {
     } finally {
         setLoading(false);
     }
+  };
+
+  const handleGoogleSimulation = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setLoading(true);
+      setError('');
+
+      try {
+          if(!googleEmail.endsWith('@colegiolahispanidad.es')) {
+              setError('Debes usar un correo corporativo (@colegiolahispanidad.es)');
+              setLoading(false);
+              return;
+          }
+
+          const success = await loginWithGoogle(googleEmail);
+          if (!success) {
+              setError('Usuario no autorizado o no encontrado en el sistema.');
+          }
+      } catch(e) {
+          setError('Error validando cuenta Google.');
+      } finally {
+          setLoading(false);
+      }
   };
   
   return (
@@ -73,50 +99,111 @@ const Login = () => {
           <p className="text-indigo-600 font-medium">Cooperativa de Enseñanza La Hispanidad</p>
         </div>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Usuario</label>
-                <div className="relative">
-                    <UserIcon className="absolute left-3 top-3 text-gray-400" size={18} />
-                    <input 
-                        type="text" 
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 bg-gray-100 border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                        placeholder="Introduce tu usuario"
-                    />
+        {view === 'default' ? (
+             <form onSubmit={handleManualLogin} className="space-y-6">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Usuario Prisma</label>
+                    <div className="relative">
+                        <UserIcon className="absolute left-3 top-3 text-gray-400" size={18} />
+                        <input
+                            type="text"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            className="w-full pl-10 pr-4 py-3 bg-gray-100 border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                            placeholder="Usuario"
+                        />
+                    </div>
                 </div>
-            </div>
-            
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-                <div className="relative">
-                    <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
-                    <input 
-                        type="password" 
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 bg-gray-100 border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                        placeholder="••••••••"
-                    />
-                </div>
-            </div>
 
-            {error && (
-                <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg text-center font-medium animate-pulse">
-                    {error}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">PIN / Contraseña</label>
+                    <div className="relative">
+                        <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
+                        <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="w-full pl-10 pr-4 py-3 bg-gray-100 border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                            placeholder="••••••••"
+                        />
+                    </div>
                 </div>
-            )}
 
-            <button 
-                type="submit"
-                disabled={loading}
-                className={`w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-500/30 transition-all active:scale-95 flex justify-center items-center gap-2 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
-            >
-                {loading && <Loader size={18} className="animate-spin" />}
-                {loading ? 'Validando...' : 'Entrar a la Plataforma'}
-            </button>
-        </form>
+                {error && (
+                    <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg text-center font-medium animate-pulse">
+                        {error}
+                    </div>
+                )}
+
+                <button
+                    type="submit"
+                    disabled={loading}
+                    className={`w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-500/30 transition-all active:scale-95 flex justify-center items-center gap-2 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                >
+                    {loading && <Loader size={18} className="animate-spin" />}
+                    {loading ? 'Validando...' : 'Entrar con Credenciales'}
+                </button>
+
+                <div className="relative flex py-2 items-center">
+                    <div className="flex-grow border-t border-gray-300"></div>
+                    <span className="flex-shrink-0 mx-4 text-gray-400 text-sm">O entra con</span>
+                    <div className="flex-grow border-t border-gray-300"></div>
+                </div>
+
+                <button
+                    type="button"
+                    onClick={() => setView('google')}
+                    className="w-full bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold py-3 rounded-xl shadow-sm transition-all flex justify-center items-center gap-2"
+                >
+                     <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
+                     Entrar con Google
+                </button>
+            </form>
+        ) : (
+            <form onSubmit={handleGoogleSimulation} className="space-y-6">
+                 <div className="text-center mb-4">
+                     <h3 className="text-lg font-bold text-gray-800">Login Corporativo</h3>
+                     <p className="text-sm text-gray-500">Usa tu cuenta @colegiolahispanidad.es</p>
+                 </div>
+
+                 <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Corporativo</label>
+                    <div className="relative">
+                        <UserIcon className="absolute left-3 top-3 text-gray-400" size={18} />
+                        <input
+                            type="email"
+                            value={googleEmail}
+                            onChange={(e) => setGoogleEmail(e.target.value)}
+                            className="w-full pl-10 pr-4 py-3 bg-gray-100 border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                            placeholder="nombre@colegiolahispanidad.es"
+                        />
+                    </div>
+                </div>
+
+                {error && (
+                    <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg text-center font-medium animate-pulse">
+                        {error}
+                    </div>
+                )}
+
+                <button
+                    type="submit"
+                    disabled={loading}
+                    className={`w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-500/30 transition-all active:scale-95 flex justify-center items-center gap-2 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                >
+                    {loading && <Loader size={18} className="animate-spin" />}
+                    {loading ? 'Validando...' : 'Entrar con Google'}
+                </button>
+
+                 <button
+                    type="button"
+                    onClick={() => setView('default')}
+                    className="w-full text-gray-500 text-sm hover:text-indigo-600 transition"
+                >
+                     &larr; Volver a credenciales manuales
+                </button>
+            </form>
+        )}
         
         <div className="mt-8 text-center space-y-4">
             <p className="text-[10px] text-gray-400 font-medium tracking-wider uppercase border-t border-gray-100 pt-4 w-1/2 mx-auto">
@@ -270,6 +357,22 @@ const AppContent = () => {
     return false;
   };
 
+  const loginWithGoogle = async (email: string): Promise<boolean> => {
+      const response = await db.loginGoogle(email);
+      if (response && response.success && response.user) {
+          const userMapped: User = {
+            ...response.user,
+            password: ''
+          };
+
+          setUser(userMapped);
+          localStorage.setItem('auth_user', JSON.stringify(userMapped));
+          addToast(`Bienvenido/a ${userMapped.name}`, 'success');
+          return true;
+      }
+      return false;
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem('auth_user');
@@ -285,7 +388,7 @@ const AppContent = () => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, loginWithGoogle, logout }}>
       <HashRouter>
         <Routes>
           <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />

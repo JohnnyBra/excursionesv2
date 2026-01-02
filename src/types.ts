@@ -2,7 +2,8 @@ export enum UserRole {
   DIRECCION = 'DIRECCION',
   TUTOR = 'TUTOR',
   TESORERIA = 'TESORERIA',
-  COORDINACION = 'COORDINACION'
+  COORDINACION = 'COORDINACION',
+  ADMIN = 'ADMIN'
 }
 
 export enum ExcursionScope {
@@ -31,6 +32,24 @@ export interface User {
   email: string;
   role: UserRole;
   classId?: string;
+}
+
+export interface PrismaUser {
+  id: string;
+  username: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  classId?: string;
+}
+
+export interface PrismaClass {
+  id: string;
+  name: string;
+  stage: string;
+  cycle: string;
+  level: string;
+  group: string;
 }
 
 export interface Cycle {

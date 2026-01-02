@@ -12,8 +12,8 @@ const PORT = 3005;
 const DB_FILE = path.join(__dirname, 'database.json');
 
 // --- CONSTANTES PRISMA ---
-const PRISMA_URL = 'http://localhost:3020';
-const API_SECRET = 'SECRET_KEY_123'; // En producción esto iría en .env
+const PRISMA_URL = 'https://prisma.bibliohispa.es';
+const API_SECRET = 'ojosyculos';
 
 // --- CONFIGURACIÓN SOCKET.IO ---
 const httpServer = http.createServer(app); // Envolver app express
@@ -39,6 +39,7 @@ io.on('connection', (socket) => {
 // Middleware
 app.use(cors());
 app.use(bodyParser.json({ limit: '50mb' }));
+app.set('trust proxy', 1); // Confía en el primer proxy (Cloudflare)
 
 // --- SERVIR FRONTEND ESTÁTICO ---
 app.use(express.static(path.join(__dirname, '../dist')));
@@ -46,27 +47,11 @@ app.use(express.static(path.join(__dirname, '../dist')));
 // --- Datos Iniciales (Semilla) Actualizados ---
 const INITIAL_DATA = {
   users: [
-    { id: 'u1', username: 'direccion', password: '123', name: 'Ana Directora', email: 'admin@hispanidad.com', role: 'DIRECCION' },
-    { id: 'u2', username: 'tutor1', password: '123', name: 'Carlos Tutor', email: 'tutor@hispanidad.com', role: 'TUTOR', classId: 'cl1' },
-    { id: 'u3', username: 'tesoreria', password: '123', name: 'Laura Tesorera', email: 'money@hispanidad.com', role: 'TESORERIA' },
-    { id: 'u4', username: 'tutor2', password: '123', name: 'Maria Tutor 2', email: 'tutor2@hispanidad.com', role: 'TUTOR', classId: 'cl2' },
+    { id: 'u1', username: 'direccion', password: '123', name: 'Ana Directora', email: 'admin@hispanidad.com', role: 'DIRECCION' }
   ],
-  cycles: [
-    { id: 'c1', name: 'Infantil (3, 4, 5 años)' },
-    { id: 'c2', name: 'Primaria - 1º Ciclo (1º y 2º)' },
-    { id: 'c3', name: 'Primaria - 2º Ciclo (3º y 4º)' },
-    { id: 'c4', name: 'Primaria - 3º Ciclo (5º y 6º)' },
-    { id: 'c5', name: 'ESO - 1º Ciclo (1º y 2º)' },
-    { id: 'c6', name: 'ESO - 2º Ciclo (3º y 4º)' }
-  ],
-  classes: [
-    { id: 'cl1', name: '1º A Primaria', cycleId: 'c2', tutorId: 'u2' },
-    { id: 'cl2', name: '3º B ESO', cycleId: 'c6', tutorId: 'u4' },
-  ],
-  students: [
-    { id: 's1', name: 'Pepito Pérez', classId: 'cl1' },
-    { id: 's2', name: 'Juanita López', classId: 'cl1' },
-  ],
+  cycles: [],
+  classes: [],
+  students: [],
   excursions: [],
   participations: []
 };
@@ -151,9 +136,14 @@ app.post('/api/restore', (req, res) => {
   }
 });
 
-// --- PROXY ENDPOINTS (FASE 1) ---
+// --- PROXY ENDPOINTS (PRISMA EDU) ---
 
-// Login Proxy
+const prismaHeaders = {
+    'api_secret': API_SECRET,
+    'Content-Type': 'application/json'
+};
+
+// Login Proxy (Manual)
 app.post('/api/proxy/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -162,7 +152,7 @@ app.post('/api/proxy/login', async (req, res) => {
     const response = await axios.post(`${PRISMA_URL}/api/auth/external-check`, {
       username,
       password
-    });
+    }, { headers: prismaHeaders });
 
     // Retornamos la respuesta tal cual
     res.json(response.data);
@@ -176,11 +166,28 @@ app.post('/api/proxy/login', async (req, res) => {
   }
 });
 
+// Users Proxy
+app.get('/api/proxy/users', async (req, res) => {
+  try {
+    const response = await axios.get(`${PRISMA_URL}/api/export/users`, {
+      headers: prismaHeaders
+    });
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error en Proxy Users:', error.message);
+    if (error.response) {
+      res.status(error.response.status).json(error.response.data);
+    } else {
+      res.status(500).json({ error: 'Error obteniendo usuarios externos' });
+    }
+  }
+});
+
 // Classes Proxy
 app.get('/api/proxy/classes', async (req, res) => {
   try {
     const response = await axios.get(`${PRISMA_URL}/api/export/classes`, {
-      headers: { 'Authorization': `Bearer ${API_SECRET}` }
+      headers: prismaHeaders
     });
     res.json(response.data);
   } catch (error) {
@@ -197,7 +204,7 @@ app.get('/api/proxy/classes', async (req, res) => {
 app.get('/api/proxy/students', async (req, res) => {
   try {
     const response = await axios.get(`${PRISMA_URL}/api/export/students`, {
-      headers: { 'Authorization': `Bearer ${API_SECRET}` }
+      headers: prismaHeaders
     });
     res.json(response.data);
   } catch (error) {
