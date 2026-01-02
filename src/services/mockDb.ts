@@ -65,7 +65,12 @@ const apiCall = async (endpoint: string, method: string = 'GET', body?: any) => 
     const url = endpoint.startsWith('/') ? `${API_URL}${endpoint}` : `${API_URL}/${endpoint}`;
     
     const res = await fetch(url, config);
-    if (!res.ok) throw new Error(`Status: ${res.status}`);
+    if (!res.ok) {
+        // INTENTAR LEER EL CUERPO DEL ERROR
+        const errorText = await res.text();
+        console.error(`API Error details [${method} ${endpoint}]: Status ${res.status}`, errorText);
+        throw new Error(`Status: ${res.status} - ${errorText}`);
+    }
     return await res.json();
   } catch (error) {
     console.error(`API Error [${method} ${endpoint}]:`, error);
@@ -226,6 +231,7 @@ export const db = {
   // --- Proxy Methods ---
   loginProxy: async (username: string, pass: string) => {
       try {
+          console.log(`Attempting login for user: ${username}`);
           // 1. Verificar Login Local (para usuarios administradores como 'direccion')
           // Nota: Solo comprobamos usuarios que tengan contraseña establecida en localState
           // Los usuarios del proxy tienen password: ''
@@ -241,11 +247,16 @@ export const db = {
           }
 
           // 2. Si no es local, intentar Proxy
-          const res = await apiCall('/proxy/login', 'POST', { username, password: pass });
+          const res = await apiCall('/proxy/login', 'POST', { username: username.trim(), password: pass });
+
+          console.log("Proxy Login Response:", res);
+
+          if (!res) return { success: false, message: "Error de conexión con el servidor" };
+
           return res; // { success: true, user: ... }
       } catch (e) {
           console.error("Proxy Login Error", e);
-          return { success: false };
+          return { success: false, message: "Excepción en login" };
       }
   },
 

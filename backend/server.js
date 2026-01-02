@@ -148,17 +148,22 @@ app.post('/api/proxy/login', async (req, res) => {
   try {
     const { username, password } = req.body;
 
+    console.log(`🔐 Proxy Login intentando para: ${username}`);
+
     // Llamada a PrismaEdu
     const response = await axios.post(`${PRISMA_URL}/api/auth/external-check`, {
       username,
       password
     }, { headers: prismaHeaders });
 
+    console.log(`✅ Proxy Login éxito para ${username}:`, response.data);
+
     // Retornamos la respuesta tal cual
     res.json(response.data);
   } catch (error) {
-    console.error('Error en Proxy Login:', error.message);
+    console.error(`❌ Error en Proxy Login para ${req.body?.username}:`, error.message);
     if (error.response) {
+      console.error("Detalles error externo:", error.response.data);
       res.status(error.response.status).json(error.response.data);
     } else {
       res.status(500).json({ error: 'Error de conexión con PrismaEdu' });
