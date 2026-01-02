@@ -7,7 +7,7 @@ import { Dashboard } from './components/Dashboard';
 import { ExcursionManager } from './components/ExcursionManager';
 import { UserManager } from './components/UserManager';
 import { ToastProvider, useToast } from './components/ui/Toast';
-import { Lock, User as UserIcon, Save, Loader, ShieldCheck } from 'lucide-react';
+import { Lock, User as UserIcon, Save, Loader, ShieldCheck, ArrowLeft } from 'lucide-react';
 
 // -- Auth Context --
 interface AuthContextType {
@@ -78,6 +78,11 @@ const Login = () => {
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      <a href="https://prisma.bibliohispa.es/" className="absolute top-6 left-6 text-white hover:text-indigo-100 transition flex items-center gap-2 font-medium z-20">
+        <ArrowLeft size={20} />
+        <span className="hidden md:inline">Volver a Portal Matriz</span>
+      </a>
+
       {/* Decorative Background Circles */}
       <div className="absolute top-0 left-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl translate-x-1/2 translate-y-1/2 pointer-events-none"></div>
