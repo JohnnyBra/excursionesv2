@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../services/mockDb';
 import { Excursion, Participation, Student, ExcursionScope, UserRole, ExcursionClothing, TransportType, ClassGroup } from '../types';
 import { useAuth } from '../App';
@@ -46,8 +46,21 @@ const drawPdfHeader = (doc: jsPDF, logoData: string | null) => {
 
   doc.setFontSize(10);
   doc.setTextColor(100, 100, 100);
-  doc.text(new Date().toLocaleString(), 14, 26);
+  doc.text(new Date().toLocaleString('es-ES'), 14, 26);
   doc.setTextColor(0, 0, 0);
+};
+
+// Helper to extract surname for sorting
+const getStudentSurname = (fullName: string): string => {
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length >= 3) {
+    // Last two words are surname
+    return parts.slice(-2).join(' ').toLowerCase();
+  } else if (parts.length === 2) {
+    // Last word is surname
+    return parts[parts.length - 1].toLowerCase();
+  }
+  return fullName.toLowerCase();
 };
 
 export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
@@ -139,6 +152,49 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
           setIsExcursionDayOrPast(false);
       }
   }, [selectedExcursion]);
+
+  // Calculate visible participants based on role and sorting
+  const visibleParticipants = useMemo(() => {
+    let result = [...participants];
+
+    // 1. Filter for Tutor
+    if (user?.role === UserRole.TUTOR) {
+        result = result.filter(p => {
+            const student = studentsMap[p.studentId];
+            return student && student.classId === currentUser?.classId;
+        });
+    }
+
+    // 2. Sort
+    result.sort((a, b) => {
+        const studentA = studentsMap[a.studentId];
+        const studentB = studentsMap[b.studentId];
+
+        if (!studentA || !studentB) return 0;
+
+        // Sorting for Direction/Admin/Others: Class first
+        if (user?.role === UserRole.DIRECCION || user?.role === UserRole.ADMIN || user?.role === UserRole.TESORERIA) {
+            const classA = classesList.find(c => c.id === studentA.classId)?.name || '';
+            const classB = classesList.find(c => c.id === studentB.classId)?.name || '';
+
+            if (classA !== classB) {
+                return classA.localeCompare(classB);
+            }
+        }
+
+        // Secondary Sort (Primary for Tutor): Surname then Name
+        const surnameA = getStudentSurname(studentA.name);
+        const surnameB = getStudentSurname(studentB.name);
+
+        if (surnameA !== surnameB) {
+            return surnameA.localeCompare(surnameB);
+        }
+
+        return studentA.name.localeCompare(studentB.name);
+    });
+
+    return result;
+  }, [participants, studentsMap, user, currentUser, classesList]);
 
   const loadData = () => {
     const all = db.getExcursions();
@@ -481,7 +537,28 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       doc.setFontSize(12);
       doc.text(`Lista: ${selectedExcursion.title}`, 40, 35);
       
-      const tableData = participants.map(p => [
+      // Filter for current tutor's class and Sort
+      let reportParticipants = [...participants];
+
+      if (user?.role === UserRole.TUTOR && currentUser?.classId) {
+          reportParticipants = reportParticipants.filter(p => {
+              const st = studentsMap[p.studentId];
+              return st && st.classId === currentUser.classId;
+          });
+      }
+
+      // Sort by Surname
+      reportParticipants.sort((a, b) => {
+          const stA = studentsMap[a.studentId];
+          const stB = studentsMap[b.studentId];
+          if (!stA || !stB) return 0;
+          const surA = getStudentSurname(stA.name);
+          const surB = getStudentSurname(stB.name);
+          if (surA !== surB) return surA.localeCompare(surB);
+          return stA.name.localeCompare(stB.name);
+      });
+
+      const tableData = reportParticipants.map(p => [
           studentsMap[p.studentId]?.name || 'Unknown',
           p.authSigned ? 'SÍ' : 'NO',
           p.paid ? 'SÍ' : 'NO',
@@ -518,10 +595,36 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       doc.text(`Coste Real (Bus+Entradas): ${realCost}€`, 14, 65);
       doc.text(`Balance: ${collected - realCost}€`, 14, 75);
 
-      const tableData = participants.map(p => [
-          studentsMap[p.studentId]?.name || 'Unknown',
-          p.paid ? `${p.amountPaid}€` : 'Pendiente'
-      ]);
+      // Sort by Class then Surname for Director, or just Surname for others if preferred.
+      // Assuming Director wants it sorted by class here too.
+      const sortedParticipants = [...participants].sort((a, b) => {
+          const stA = studentsMap[a.studentId];
+          const stB = studentsMap[b.studentId];
+          if (!stA || !stB) return 0;
+
+          if (user?.role === UserRole.DIRECCION || user?.role === UserRole.ADMIN || user?.role === UserRole.TESORERIA) {
+            const classA = classesList.find(c => c.id === stA.classId)?.name || '';
+            const classB = classesList.find(c => c.id === stB.classId)?.name || '';
+            if (classA !== classB) return classA.localeCompare(classB);
+          }
+
+          const surA = getStudentSurname(stA.name);
+          const surB = getStudentSurname(stB.name);
+          if (surA !== surB) return surA.localeCompare(surB);
+          return stA.name.localeCompare(stB.name);
+      });
+
+      const tableData = sortedParticipants.map(p => {
+          const st = studentsMap[p.studentId];
+          const className = classesList.find(c => c.id === st?.classId)?.name || '';
+          // Adding Class Name column for clarity if Director
+          const name = st?.name || 'Unknown';
+          const display = (user?.role === UserRole.DIRECCION || user?.role === UserRole.ADMIN) ? `${name} (${className})` : name;
+          return [
+              display,
+              p.paid ? `${p.amountPaid}€` : 'Pendiente'
+          ];
+      });
 
       autoTable(doc, { startY: 85, head: [['Alumno', 'Pago']], body: tableData });
       doc.save(`finanzas_${selectedExcursion.title}.pdf`);
@@ -544,7 +647,18 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
 
       const participantsByClass: Record<string, typeof participants> = {};
       
-      participants.forEach(p => {
+      // Sort participants by surname before grouping to ensure order within class
+      const sortedParticipants = [...participants].sort((a, b) => {
+        const stA = studentsMap[a.studentId];
+        const stB = studentsMap[b.studentId];
+        if (!stA || !stB) return 0;
+        const surA = getStudentSurname(stA.name);
+        const surB = getStudentSurname(stB.name);
+        if (surA !== surB) return surA.localeCompare(surB);
+        return stA.name.localeCompare(stB.name);
+      });
+
+      sortedParticipants.forEach(p => {
           const student = studentsMap[p.studentId];
           if (!student) return;
           const className = classesList.find(c => c.id === student.classId)?.name || 'Sin Clase';
@@ -1005,7 +1119,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {participants.map(p => {
+                                    {visibleParticipants.map(p => {
                                         const isEditable = canEditStudent(p.studentId);
                                         return (
                                             <tr key={p.id} className="border-t hover:bg-gray-50">
