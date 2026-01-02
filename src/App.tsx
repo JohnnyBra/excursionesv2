@@ -351,11 +351,17 @@ const AppContent = () => {
         // db.addUser(userMapped) // Cuidado con duplicados, mejor solo usar en sesión
         // O sincronizar si no existe:
         const localUsers = db.getUsers();
-        if (!localUsers.find(u => u.id === userMapped.id)) {
+        const existingLocalUser = localUsers.find(u => u.id === userMapped.id);
+
+        if (!existingLocalUser) {
             db.addUser(userMapped);
         } else {
-            // Actualizar nombre si cambió en Prisma
-            db.updateUser(userMapped);
+            // Actualizar nombre si cambió en Prisma, pero mantener password local si existe
+            // (Evita sobrescribir passwords de usuarios de test con string vacío)
+            db.updateUser({
+                ...userMapped,
+                password: existingLocalUser.password || userMapped.password
+            });
         }
 
         setUser(userMapped);
