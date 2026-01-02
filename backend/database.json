@@ -6,16 +6,16 @@
       "name": "Ana Directora",
       "email": "admin@hispanidad.com",
       "role": "DIRECCION",
-      "password": ""
+      "password": "123"
     },
     {
       "id": "u2",
       "username": "tutor1",
-      "password": "123",
       "name": "Carlos Tutor",
       "email": "tutor@hispanidad.com",
       "role": "TUTOR",
-      "classId": "cl1"
+      "classId": "cl1",
+      "password": "123"
     },
     {
       "id": "u3",
@@ -28,11 +28,11 @@
     {
       "id": "u4",
       "username": "tutor2",
-      "password": "123",
       "name": "Maria Tutor 2",
       "email": "tutor2@hispanidad.com",
       "role": "TUTOR",
-      "classId": "cl2"
+      "classId": "cl2",
+      "password": "123"
     },
     {
       "id": "u_prisma_1",
