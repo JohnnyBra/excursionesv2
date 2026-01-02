@@ -1,4 +1,4 @@
-import { User, ClassGroup, Cycle, Student, Excursion, Participation } from '../types';
+import { User, ClassGroup, Cycle, Student, Excursion, Participation, PrismaUser, PrismaClass, UserRole } from '../types';
 import { io, Socket } from 'socket.io-client';
 
 // --- API CONFIG ---
@@ -91,36 +91,90 @@ const notifyListeners = () => {
 
 const fetchAndLoadData = async () => {
     try {
-      // 1. Cargar DB local (excursiones, usuarios locales, etc)
+      // 1. Cargar DB local (excursiones, particpaciones)
       const data = await apiCall('/db');
       if (data) {
-        localState = data;
+        localState = {
+            ...localState,
+            excursions: data.excursions || [],
+            participations: data.participations || []
+        };
 
-        // 2. FASE 2: Cargar CLASES desde Proxy PrismaEdu
-        // Esto asegura que siempre tengamos las clases actualizadas al iniciar
+        // 2. FASE 2: Cargar DATOS MAESTROS desde Proxy PrismaEdu
         try {
-            const proxyClasses = await apiCall('/proxy/classes');
+            const [proxyUsers, proxyClasses, proxyStudents] = await Promise.all([
+                apiCall('/proxy/users'),
+                apiCall('/proxy/classes'),
+                apiCall('/proxy/students')
+            ]);
+
+            // --- PROCESAR CLASES Y CICLOS ---
             if (proxyClasses && Array.isArray(proxyClasses)) {
-                // Mapear al formato local si es necesario, asumimos compatibilidad o mapeo simple
-                // Prisma podría devolver campos distintos, aquí unificamos
-                const mappedClasses = proxyClasses.map((c: any) => ({
+                const rawClasses: PrismaClass[] = proxyClasses;
+
+                // Generar Ciclos Únicos basados en Stage + Cycle
+                const cycleMap = new Map<string, Cycle>();
+
+                rawClasses.forEach(c => {
+                    const cycleId = `${c.stage}-${c.cycle}`.replace(/\s+/g, '-').toLowerCase();
+                    if (!cycleMap.has(cycleId)) {
+                        cycleMap.set(cycleId, {
+                            id: cycleId,
+                            name: `${c.stage} - ${c.cycle}`
+                        });
+                    }
+                });
+
+                localState.cycles = Array.from(cycleMap.values());
+
+                // Mapear Clases
+                // Nota: Prisma no devuelve tutorId directamente en la clase, sino en los usuarios
+                localState.classes = rawClasses.map(c => ({
                     id: c.id,
                     name: c.name,
-                    cycleId: c.cycleId,
-                    tutorId: c.tutorId || undefined // Si viene del proxy
+                    cycleId: `${c.stage}-${c.cycle}`.replace(/\s+/g, '-').toLowerCase(),
+                    tutorId: '' // Se rellenará al procesar usuarios
+                }));
+            }
+
+            // --- PROCESAR USUARIOS ---
+            if (proxyUsers && Array.isArray(proxyUsers)) {
+                const rawUsers: PrismaUser[] = proxyUsers;
+
+                localState.users = rawUsers.map(u => ({
+                    id: u.id,
+                    username: u.username,
+                    name: u.name,
+                    email: u.email,
+                    role: u.role, // Asegurar que coincida con enum UserRole
+                    classId: u.classId,
+                    password: '' // No necesitamos pass
                 }));
 
-                // Actualizamos localState.classes
-                // Opción A: Reemplazar todo. Opción B: Merge.
-                // Reemplazamos porque Prisma es la fuente de la verdad para estructura escolar.
-                localState.classes = mappedClasses;
-                console.log(`✅ ${mappedClasses.length} Clases cargadas desde PrismaEdu`);
+                // Vincular tutores a clases
+                localState.users.forEach(u => {
+                    if (u.role === UserRole.TUTOR && u.classId) {
+                        const clsIndex = localState.classes.findIndex(c => c.id === u.classId);
+                        if (clsIndex >= 0) {
+                            localState.classes[clsIndex].tutorId = u.id;
+                        }
+                    }
+                });
             }
+
+            // --- PROCESAR ALUMNOS ---
+            if (proxyStudents && Array.isArray(proxyStudents)) {
+                // Asumimos que vienen con { id, name, classId }
+                localState.students = proxyStudents;
+            }
+
+            console.log(`✅ Datos PrismaEdu cargados: ${localState.users.length} usuarios, ${localState.classes.length} clases, ${localState.students.length} alumnos.`);
+
         } catch (proxyErr) {
-            console.error("Error cargando clases de proxy:", proxyErr);
+            console.error("Error cargando datos de PrismaEdu:", proxyErr);
         }
 
-        console.log("Datos sincronizados con servidor via Socket/Init");
+        console.log("Datos sincronizados con servidor");
         notifyListeners();
         return true;
       }
@@ -156,6 +210,20 @@ export const db = {
           console.error("Proxy Login Error", e);
           return { success: false };
       }
+  },
+
+  loginGoogle: async (email: string) => {
+      // Simulación: Validar si el email existe en la lista de usuarios cargada
+      const user = localState.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+
+      if (user) {
+          // Validar Roles permitidos
+          const allowedRoles = [UserRole.TUTOR, UserRole.DIRECCION, UserRole.ADMIN, UserRole.TESORERIA];
+          if (allowedRoles.includes(user.role)) {
+              return { success: true, user };
+          }
+      }
+      return { success: false, error: 'Usuario no autorizado o no encontrado.' };
   },
 
   fetchProxyStudents: async () => {
