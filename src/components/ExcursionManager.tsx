@@ -211,26 +211,6 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
     return result;
   }, [participants, studentsMap, user, currentUser, classesList]);
 
-  const getSortedClasses = (classes: ClassGroup[], cycles: any[]) => {
-    // Helper to get cycle rank
-    const getCycleRank = (cycleId: string) => {
-        const cycle = cycles.find(c => c.id === cycleId);
-        if (!cycle) return 99;
-        const name = cycle.name.toLowerCase();
-        if (name.includes('infantil')) return 1;
-        if (name.includes('primaria')) return 2;
-        if (name.includes('eso') || name.includes('secundaria')) return 3;
-        return 4;
-    };
-
-    return [...classes].sort((a, b) => {
-        const rankA = getCycleRank(a.cycleId);
-        const rankB = getCycleRank(b.cycleId);
-        if (rankA !== rankB) return rankA - rankB;
-        return a.name.localeCompare(b.name, undefined, { numeric: true });
-    });
-  };
-
   const loadData = () => {
     const all = db.getExcursions();
     let visible = all;
@@ -489,25 +469,13 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
         if (trimesterDates.t3Start) ranges.push({ name: '3º Trimestre', start: new Date(trimesterDates.t3Start), end: new Date(trimesterDates.t3End) });
     }
 
-    const allStudents = db.getStudents();
     const allParticipations = db.getParticipations();
-    const sortedClasses = getSortedClasses(db.getClasses(), db.getCycles());
 
-    // Helper to get excursions for a specific class in a date range
-    const getClassExcursions = (classId: string, start: Date, end: Date) => {
-        const cls = db.getClasses().find(c => c.id === classId);
-        if (!cls) return [];
-
+    // Helper to get excursions in a date range (globally visible to user)
+    const getExcursionsInRange = (start: Date, end: Date) => {
         return excursions.filter(ex => {
             const d = new Date(ex.dateStart);
-            if (d < start || d > end) return false;
-
-            // Check Scope
-            if (ex.scope === ExcursionScope.GLOBAL) return true;
-            if (ex.scope === ExcursionScope.CICLO && ex.targetId === cls.cycleId) return true;
-            if (ex.scope === ExcursionScope.CLASE && ex.targetId === classId) return true;
-
-            return false;
+            return d >= start && d <= end;
         }).sort((a, b) => new Date(a.dateStart).getTime() - new Date(b.dateStart).getTime());
     };
 
@@ -521,7 +489,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
         doc.text(`Informe Anual de Excursiones`, 14, 35);
         doc.setFontSize(12);
         doc.text(`Curso: ${reportYear}/${reportYear + 1}`, 14, 42);
-        doc.text(`Ordenación: ${reportSort === 'class' ? 'Por Clases' : 'Por Trimestres'}`, 14, 48);
+        doc.text(`Ordenación: ${reportSort === 'class' ? 'Anual' : 'Por Trimestres'}`, 14, 48);
 
         let currentY = 55;
 
@@ -534,142 +502,103 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                 currentY = 35;
             }
 
-            doc.setFontSize(14);
-            doc.setTextColor(0, 51, 102);
-            doc.text(range.name, 14, currentY);
-            currentY += 10;
+            // Print Header if not annual (to avoid duplication with main header)
+            if (reportSort !== 'class') {
+                doc.setFontSize(14);
+                doc.setTextColor(0, 51, 102);
+                doc.text(range.name, 14, currentY);
+                currentY += 10;
+            }
 
-            // Iterate Classes
-            for (const cls of sortedClasses) {
-                const classExcursions = getClassExcursions(cls.id, range.start, range.end);
+            const rangeExcursions = getExcursionsInRange(range.start, range.end);
 
-                if (classExcursions.length > 0) {
-                    // Check if we need a new page for the Class Header
-                    if (currentY > 180) {
-                        doc.addPage();
-                        drawPdfHeader(doc, logoData);
-                        currentY = 35;
-                    }
+            if (rangeExcursions.length > 0) {
+                 const tableData = rangeExcursions.map(ex => {
+                      const parts = allParticipations.filter(p => p.excursionId === ex.id);
+                      const attendedCount = parts.filter(p => p.attended).length;
 
-                    doc.setFontSize(12);
-                    doc.setTextColor(0, 0, 0);
-                    doc.setFont("helvetica", "bold");
-                    doc.text(cls.name, 14, currentY);
-                    doc.setFont("helvetica", "normal");
+                      const entryCount = attendedCount || parts.filter(p => p.paid).length; // For cost calculation
 
-                    const tableData = classExcursions.map(ex => {
-                        // Calculate data for THIS class context
-                        const parts = allParticipations.filter(p => p.excursionId === ex.id);
+                      const excFixed = (ex.costBus || 0) + (ex.costOther || 0);
+                      const excTotal = excFixed + ((ex.costEntry || 0) * entryCount);
 
-                        // Filter participants belonging to this class
-                        const classParts = parts.filter(p => {
-                            const s = allStudents.find(st => st.id === p.studentId);
-                            return s && s.classId === cls.id;
-                        });
+                      return [
+                           new Date(ex.dateStart).toLocaleDateString() + ' ' + new Date(ex.dateStart).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                           ex.title,
+                           ex.destination,
+                           getScopeLabel(ex.scope, ex.targetId),
+                           excTotal.toFixed(2) + '€',
+                           ex.costGlobal.toFixed(2) + '€',
+                           attendedCount.toString(), // Count only
+                           ex.justification || ''
+                      ];
+                 });
 
-                        // "Alumnos que han asistido": attended=true. Fallback to paid if attended not used yet?
-                        // Requirement: "Alumnos que han asistido". Use 'attended' flag.
-                        const attendingStudents = classParts
-                            .filter(p => p.attended)
-                            .map(p => {
-                                const s = allStudents.find(st => st.id === p.studentId);
-                                return s ? getStudentSurname(s.name) : 'Unknown';
-                            })
-                            .join(', ');
+                 autoTable(doc, {
+                    startY: currentY + 2,
+                    head: [['Fecha/Hora', 'Nombre', 'Destino', 'Cursos', 'Coste Total', 'P.Alumno', 'Nº Asistentes', 'Justificación']],
+                    body: tableData,
+                    theme: 'grid',
+                    headStyles: { fillColor: [60, 60, 60], fontSize: 8 },
+                    styles: { fontSize: 8, cellPadding: 2 },
+                    columnStyles: {
+                        0: { cellWidth: 25 },
+                        1: { cellWidth: 30 },
+                        2: { cellWidth: 25 },
+                        3: { cellWidth: 35 }, // Increased for Scope text
+                        4: { cellWidth: 20 },
+                        5: { cellWidth: 15 },
+                        6: { cellWidth: 20 }, // Small for number
+                        7: { cellWidth: 'auto' }
+                    },
+                     pageBreak: 'auto',
+                     margin: { top: 35 }
+                 });
 
-                        const entryCount = parts.filter(p => p.attended).length || parts.filter(p => p.paid).length;
-                        // const fixedCosts = (ex.costBus || 0) + (ex.costOther || 0);
-                        // const variableCosts = (ex.costEntry || 0) * entryCount;
-                        // const totalCost = ex.costGlobal * entryCount; // Using rough total or actual? Request: "Coste económico total"
-                        // Usually "Coste Económico Total" implies the Invoice total.
-                        // But per class? I will show the Excursion Total Cost (Global) to avoid confusion, or calculated share?
-                        // Let's show Excursion Total (Fixed + Variable).
-
-                        const excFixed = (ex.costBus || 0) + (ex.costOther || 0);
-                        const excTotal = excFixed + ((ex.costEntry || 0) * entryCount);
-
-                        return [
-                            new Date(ex.dateStart).toLocaleDateString() + ' ' + new Date(ex.dateStart).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-                            ex.title,
-                            ex.destination,
-                            getScopeLabel(ex.scope, ex.targetId),
-                            excTotal.toFixed(2) + '€',
-                            ex.costGlobal.toFixed(2) + '€',
-                            attendingStudents || '-',
-                            ex.justification || ''
-                        ];
-                    });
-
-                    autoTable(doc, {
-                        startY: currentY + 2,
-                        head: [['Fecha/Hora', 'Nombre', 'Destino', 'Cursos', 'Coste Total', 'P.Alumno', 'Asistentes (Clase)', 'Justificación']],
-                        body: tableData,
-                        theme: 'grid',
-                        headStyles: { fillColor: [60, 60, 60], fontSize: 8 },
-                        styles: { fontSize: 8, cellPadding: 2 },
-                        columnStyles: {
-                            0: { cellWidth: 25 }, // Fecha
-                            1: { cellWidth: 30 }, // Nombre
-                            2: { cellWidth: 25 }, // Destino
-                            3: { cellWidth: 25 }, // Cursos
-                            4: { cellWidth: 20 }, // Coste T
-                            5: { cellWidth: 15 }, // P.Alum
-                            6: { cellWidth: 60 }, // Asistentes (Wide)
-                            7: { cellWidth: 'auto' } // Justificación
-                        },
-                        // Ensure page break logic works
-                        pageBreak: 'auto',
-                        margin: { top: 35 }
-                    });
-
-                    currentY = (doc as any).lastAutoTable.finalY + 10;
-                }
+                 currentY = (doc as any).lastAutoTable.finalY + 10;
+            } else {
+                 doc.setFontSize(10);
+                 doc.setTextColor(100, 100, 100);
+                 doc.text("No hay excursiones en este periodo.", 14, currentY);
+                 currentY += 10;
             }
         }
 
         doc.save(`Informe_Direccion_${reportYear}-${reportYear+1}.pdf`);
     } else {
-        // CSV Generation (Simplified flat list)
-        // Since CSV doesn't support grouping well, we will list all rows sorted by Class -> Date
+        // CSV Generation
         let csvRows: any[] = [];
 
         for (const range of ranges) {
-             for (const cls of sortedClasses) {
-                 const classExcursions = getClassExcursions(cls.id, range.start, range.end);
-                 for (const ex of classExcursions) {
-                     const parts = allParticipations.filter(p => p.excursionId === ex.id);
-                     const classParts = parts.filter(p => {
-                        const s = allStudents.find(st => st.id === p.studentId);
-                        return s && s.classId === cls.id;
-                     });
+             const rangeExcursions = getExcursionsInRange(range.start, range.end);
+             for (const ex of rangeExcursions) {
+                  const parts = allParticipations.filter(p => p.excursionId === ex.id);
+                  const attendedCount = parts.filter(p => p.attended).length;
+                  const entryCount = attendedCount || parts.filter(p => p.paid).length;
+                  const excFixed = (ex.costBus || 0) + (ex.costOther || 0);
+                  const excTotal = excFixed + ((ex.costEntry || 0) * entryCount);
 
-                     const attendingStudents = classParts
-                        .filter(p => p.attended)
-                        .map(p => allStudents.find(st => st.id === p.studentId)?.name)
-                        .join('; ');
-
-                     const entryCount = parts.filter(p => p.attended).length || parts.filter(p => p.paid).length;
-                     const excFixed = (ex.costBus || 0) + (ex.costOther || 0);
-                     const excTotal = excFixed + ((ex.costEntry || 0) * entryCount);
-
-                     csvRows.push({
-                         Periodo: range.name,
-                         Clase: cls.name,
-                         Fecha: new Date(ex.dateStart).toLocaleDateString(),
-                         Hora: new Date(ex.dateStart).toLocaleTimeString(),
-                         Nombre: ex.title,
-                         Destino: ex.destination,
-                         CursosImplicados: getScopeLabel(ex.scope, ex.targetId),
-                         CosteTotalExcursion: excTotal.toFixed(2),
-                         CosteAlumno: ex.costGlobal.toFixed(2),
-                         AsistentesClase: attendingStudents,
-                         Justificacion: ex.justification || ''
-                     });
-                 }
+                  csvRows.push({
+                      Periodo: range.name,
+                      Fecha: new Date(ex.dateStart).toLocaleDateString(),
+                      Hora: new Date(ex.dateStart).toLocaleTimeString(),
+                      Nombre: ex.title,
+                      Destino: ex.destination,
+                      CursosImplicados: getScopeLabel(ex.scope, ex.targetId),
+                      CosteTotalExcursion: excTotal.toFixed(2),
+                      CosteAlumno: ex.costGlobal.toFixed(2),
+                      NumeroAsistentes: attendedCount,
+                      Justificacion: ex.justification || ''
+                  });
              }
         }
 
-        const headers = Object.keys(csvRows[0] || {});
+        if (csvRows.length === 0) {
+             addToast('No hay datos para generar CSV', 'info');
+             return;
+        }
+
+        const headers = Object.keys(csvRows[0]);
         const csvContent = [
             headers.join(';'),
             ...csvRows.map(r => Object.values(r).map(v => `"${v}"`).join(';'))
