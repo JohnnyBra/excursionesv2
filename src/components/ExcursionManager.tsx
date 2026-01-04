@@ -522,14 +522,18 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                       const excFixed = (ex.costBus || 0) + (ex.costOther || 0);
                       const excTotal = excFixed + ((ex.costEntry || 0) * entryCount);
 
+                      const start = new Date(ex.dateStart);
+                      const end = new Date(ex.dateEnd);
+                      const dateStr = `Salida: ${start.toLocaleDateString()} ${start.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}\nLlegada: ${end.toLocaleDateString()} ${end.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+
                       return [
-                           new Date(ex.dateStart).toLocaleDateString() + ' ' + new Date(ex.dateStart).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                           dateStr,
                            ex.title,
                            ex.destination,
                            getScopeLabel(ex.scope, ex.targetId),
                            excTotal.toFixed(2) + '€',
                            ex.costGlobal.toFixed(2) + '€',
-                           attendedCount.toString(), // Count only
+                           `${attendedCount} / ${parts.length} (${parts.length > 0 ? ((attendedCount / parts.length) * 100).toFixed(0) : 0}%)`,
                            ex.justification || ''
                       ];
                  });
@@ -542,13 +546,13 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                     headStyles: { fillColor: [60, 60, 60], fontSize: 8 },
                     styles: { fontSize: 8, cellPadding: 2 },
                     columnStyles: {
-                        0: { cellWidth: 25 },
+                        0: { cellWidth: 35 },
                         1: { cellWidth: 30 },
                         2: { cellWidth: 25 },
                         3: { cellWidth: 35 }, // Increased for Scope text
                         4: { cellWidth: 20 },
                         5: { cellWidth: 15 },
-                        6: { cellWidth: 20 }, // Small for number
+                        6: { cellWidth: 25 }, // Small for number
                         7: { cellWidth: 'auto' }
                     },
                      pageBreak: 'auto',
@@ -580,14 +584,18 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
 
                   csvRows.push({
                       Periodo: range.name,
-                      Fecha: new Date(ex.dateStart).toLocaleDateString(),
-                      Hora: new Date(ex.dateStart).toLocaleTimeString(),
+                      FechaSalida: new Date(ex.dateStart).toLocaleDateString(),
+                      HoraSalida: new Date(ex.dateStart).toLocaleTimeString(),
+                      FechaLlegada: new Date(ex.dateEnd).toLocaleDateString(),
+                      HoraLlegada: new Date(ex.dateEnd).toLocaleTimeString(),
                       Nombre: ex.title,
                       Destino: ex.destination,
                       CursosImplicados: getScopeLabel(ex.scope, ex.targetId),
                       CosteTotalExcursion: excTotal.toFixed(2),
                       CosteAlumno: ex.costGlobal.toFixed(2),
-                      NumeroAsistentes: attendedCount,
+                      Asistentes: attendedCount,
+                      TotalAlumnos: parts.length,
+                      PorcentajeAsistencia: parts.length > 0 ? ((attendedCount / parts.length) * 100).toFixed(0) + '%' : '0%',
                       Justificacion: ex.justification || ''
                   });
              }
