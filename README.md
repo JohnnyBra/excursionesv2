@@ -10,16 +10,28 @@ Los datos son persistentes y se guardan en el servidor (`backend/database.json`)
 
 ---
 
-## 🚀 Instalación Inicial
+## 🚀 Instalación desde Cero
 
-1.  **Descargar código:**
-    Abre la terminal en la carpeta del proyecto.
-
-2.  **Instalar todas las dependencias (Frontend y Backend):**
+1.  **Clonar el repositorio:**
+    Abre la terminal y ejecuta:
     ```bash
-    npm run install:all
+    git clone https://github.com/JohnnyBra/excursionesv2.git
+    cd excursionesv2
     ```
-    *(Nota: Si este comando falla, ejecuta `npm install` en la raíz y luego `cd backend && npm install`)*.
+
+2.  **Ejecutar el script de instalación automática:**
+    Este script descarga actualizaciones, instala dependencias y construye la aplicación.
+    ```bash
+    chmod +x setup.sh  # Solo necesario la primera vez
+    ./setup.sh
+    ```
+
+## 🔄 Actualizar la Aplicación
+
+Para actualizar a la última versión en el futuro, simplemente ejecuta de nuevo el script:
+```bash
+./setup.sh
+```
 
 ---
 
