@@ -222,6 +222,163 @@ app.get('/api/proxy/students', async (req, res) => {
   }
 });
 
+// --- IMPORTACIÓN Y SINCRONIZACIÓN ---
+
+const fetchPrismaData = async () => {
+    try {
+        console.log("⬇️ Iniciando importación desde PrismaEdu...");
+        const [classesRes, studentsRes, usersRes] = await Promise.all([
+            axios.get(`${PRISMA_URL}/api/export/classes`, { headers: prismaHeaders }),
+            axios.get(`${PRISMA_URL}/api/export/students`, { headers: prismaHeaders }),
+            axios.get(`${PRISMA_URL}/api/export/users`, { headers: prismaHeaders })
+        ]);
+
+        // 1. Procesar Clases y Ciclos
+        const rawClasses = classesRes.data || [];
+        const cycleMap = new Map();
+
+        const classes = rawClasses.map(c => {
+            const cycleId = `${c.stage}-${c.cycle}`.replace(/\s+/g, '-').toLowerCase();
+
+            // Generar Ciclo si no existe
+            if (!cycleMap.has(cycleId)) {
+                cycleMap.set(cycleId, {
+                    id: cycleId,
+                    name: `${c.stage} - ${c.cycle}`
+                });
+            }
+
+            return {
+                id: c.id,
+                name: c.name,
+                stage: c.stage,
+                cycle: c.cycle,
+                level: c.level,
+                cycleId: cycleId,
+                tutorId: '' // Se rellenará al procesar usuarios
+            };
+        });
+
+        const cycles = Array.from(cycleMap.values());
+
+        // 2. Procesar Alumnos
+        const rawStudents = studentsRes.data || [];
+        const students = rawStudents.map(s => ({
+            id: s.id,
+            name: s.name,
+            email: s.email,
+            classId: s.classId,
+            familyId: s.familyId
+        }));
+
+        // 3. Procesar Usuarios (Profesores)
+        const rawUsers = usersRes.data || [];
+        const users = rawUsers.map(u => ({
+            id: u.id,
+            name: u.name,
+            email: u.email,
+            classId: u.classId,
+            role: 'TUTOR', // Requisito: Siempre será TUTOR
+            username: u.username || u.email.split('@')[0], // Fallback para compatibilidad
+            password: '' // Sin contraseña desde export
+        }));
+
+        // 4. Vincular Tutor a Clase (Bidireccional)
+        users.forEach(u => {
+            if (u.classId) {
+                const cls = classes.find(c => c.id === u.classId);
+                if (cls) cls.tutorId = u.id;
+            }
+        });
+
+        console.log(`✅ Datos obtenidos: ${users.length} usuarios, ${classes.length} clases, ${students.length} alumnos.`);
+        return { users, classes, students, cycles };
+
+    } catch (error) {
+        console.error("❌ Error en fetchPrismaData:", error.message);
+        if (error.response) {
+            throw { status: error.response.status, message: error.response.data };
+        }
+        throw { status: 500, message: "Error conectando con PrismaEdu" };
+    }
+};
+
+app.post('/api/import/prisma', async (req, res) => {
+    try {
+        const prismaData = await fetchPrismaData();
+        const currentDb = readDb();
+
+        // A) Ciclos
+        const mergedCycles = [...currentDb.cycles];
+        prismaData.cycles.forEach(pc => {
+            if (!mergedCycles.find(c => c.id === pc.id)) {
+                mergedCycles.push(pc);
+            }
+        });
+
+        // B) Clases
+        const mergedClasses = [...currentDb.classes];
+        prismaData.classes.forEach(pc => {
+            const idx = mergedClasses.findIndex(c => c.id === pc.id);
+            if (idx === -1) {
+                mergedClasses.push(pc);
+            } else {
+                mergedClasses[idx] = { ...mergedClasses[idx], ...pc };
+            }
+        });
+
+        // C) Usuarios
+        const mergedUsers = [...currentDb.users];
+        prismaData.users.forEach(pu => {
+            const idx = mergedUsers.findIndex(u => u.id === pu.id);
+            if (idx >= 0) {
+                if (!mergedUsers[idx].password) {
+                     mergedUsers[idx] = pu;
+                }
+            } else {
+                mergedUsers.push(pu);
+            }
+        });
+
+        // D) Alumnos
+        const mergedStudents = [...currentDb.students];
+        prismaData.students.forEach(ps => {
+            const idx = mergedStudents.findIndex(s => s.id === ps.id);
+            if (idx === -1) {
+                mergedStudents.push(ps);
+            } else {
+                mergedStudents[idx] = ps;
+            }
+        });
+
+        const newDb = {
+            ...currentDb,
+            cycles: mergedCycles,
+            classes: mergedClasses,
+            users: mergedUsers,
+            students: mergedStudents
+        };
+
+        writeDb(newDb);
+        io.emit('db_update', { entity: 'all', action: 'import' });
+
+        res.json({
+            success: true,
+            message: "Importación completada con éxito",
+            stats: {
+                users: mergedUsers.length,
+                classes: mergedClasses.length,
+                students: mergedStudents.length
+            },
+            data: prismaData
+        });
+
+    } catch (error) {
+        const status = error.status || 500;
+        res.status(status).json({ error: error.message || "Error interno en importación" });
+    }
+});
+
 
 // --- CATCH-ALL ROUTE ---
 app.get('/', (req, res) => {
