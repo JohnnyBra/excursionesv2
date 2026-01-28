@@ -88,6 +88,7 @@ export interface Excursion {
   scope: ExcursionScope;
   targetId?: string;
   creatorId: string;
+  status?: 'ACTIVE' | 'CANCELLED' | 'POSTPONED';
 }
 
 export interface Participation {
