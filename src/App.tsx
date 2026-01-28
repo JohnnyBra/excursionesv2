@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useGoogleLogin } from '@react-oauth/google';
 import { db } from './services/mockDb';
 import { User } from './types';
 import { Layout } from './components/Layout';
@@ -33,8 +34,6 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<'default' | 'google'>('default');
-  const [googleEmail, setGoogleEmail] = useState('');
   
   const handleManualLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,28 +52,37 @@ const Login = () => {
     }
   };
 
-  const handleGoogleSimulation = async (e: React.FormEvent) => {
-      e.preventDefault();
+  const googleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
       setLoading(true);
       setError('');
-
       try {
-          if(!googleEmail.endsWith('@colegiolahispanidad.es')) {
-              setError('Debes usar un correo corporativo (@colegiolahispanidad.es)');
-              setLoading(false);
-              return;
-          }
+        const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+        });
+        const userInfo = await userInfoRes.json();
 
-          const success = await loginWithGoogle(googleEmail);
-          if (!success) {
-              setError('Usuario no autorizado o no encontrado en el sistema.');
-          }
-      } catch(e) {
+        if (userInfo && userInfo.email) {
+             // Validar contra Prisma (db local sincronizada)
+             const success = await loginWithGoogle(userInfo.email);
+             if (!success) {
+                  setError('Usuario no autorizado o no encontrado en el sistema.');
+             }
+        } else {
+            setError('No se pudo obtener el email de Google.');
+        }
+      } catch (err) {
+          console.error(err);
           setError('Error validando cuenta Google.');
       } finally {
           setLoading(false);
       }
-  };
+    },
+    onError: () => {
+        setError('Google Login falló.');
+        setLoading(false);
+    }
+  });
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex flex-col items-center justify-center p-4 relative overflow-hidden">
@@ -96,7 +104,6 @@ const Login = () => {
             className="h-24 w-auto mb-4 object-contain drop-shadow-md" 
             onError={(e) => {
                 console.error("Error cargando logo en Login:", e);
-                // Si falla, ocultamos la imagen rota para que no se vea feo
                 e.currentTarget.style.display = 'none';
             }}
           />
@@ -104,115 +111,71 @@ const Login = () => {
           <p className="text-indigo-600 font-medium">Cooperativa de Enseñanza La Hispanidad</p>
         </div>
         
-        {view === 'default' ? (
-             <form onSubmit={handleManualLogin} className="space-y-6">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Usuario Prisma</label>
-                    <div className="relative">
-                        <UserIcon className="absolute left-3 top-3 text-gray-400" size={18} />
-                        <input
-                            type="text"
-                            name="username"
-                            autoComplete="username"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            className="w-full pl-10 pr-4 py-3 bg-gray-100 border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                            placeholder="Usuario"
-                        />
-                    </div>
+        <form onSubmit={handleManualLogin} className="space-y-6">
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Usuario Prisma</label>
+                <div className="relative">
+                    <UserIcon className="absolute left-3 top-3 text-gray-400" size={18} />
+                    <input
+                        type="text"
+                        name="username"
+                        autoComplete="username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 bg-gray-100 border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                        placeholder="Usuario"
+                    />
                 </div>
+            </div>
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">PIN / Contraseña</label>
-                    <div className="relative">
-                        <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
-                        <input
-                            type="password"
-                            name="password"
-                            autoComplete="current-password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full pl-10 pr-4 py-3 bg-gray-100 border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                            placeholder="••••••••"
-                        />
-                    </div>
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">PIN / Contraseña</label>
+                <div className="relative">
+                    <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
+                    <input
+                        type="password"
+                        name="password"
+                        autoComplete="current-password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 bg-gray-100 border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                        placeholder="••••••••"
+                    />
                 </div>
+            </div>
 
-                {error && (
-                    <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg text-center font-medium animate-pulse">
-                        {error}
-                    </div>
-                )}
-
-                <button
-                    type="submit"
-                    disabled={loading}
-                    className={`w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-500/30 transition-all active:scale-95 flex justify-center items-center gap-2 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
-                >
-                    {loading && <Loader size={18} className="animate-spin" />}
-                    {loading ? 'Validando...' : 'Entrar con Credenciales'}
-                </button>
-
-                <div className="relative flex py-2 items-center">
-                    <div className="flex-grow border-t border-gray-300"></div>
-                    <span className="flex-shrink-0 mx-4 text-gray-400 text-sm">O entra con</span>
-                    <div className="flex-grow border-t border-gray-300"></div>
+            {error && (
+                <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg text-center font-medium animate-pulse">
+                    {error}
                 </div>
+            )}
 
-                <button
-                    type="button"
-                    onClick={() => setView('google')}
-                    className="w-full bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold py-3 rounded-xl shadow-sm transition-all flex justify-center items-center gap-2"
-                >
-                     <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
-                     Entrar con Google
-                </button>
-            </form>
-        ) : (
-            <form onSubmit={handleGoogleSimulation} className="space-y-6">
-                 <div className="text-center mb-4">
-                     <h3 className="text-lg font-bold text-gray-800">Login Corporativo</h3>
-                     <p className="text-sm text-gray-500">Usa tu cuenta @colegiolahispanidad.es</p>
-                 </div>
+            <button
+                type="submit"
+                disabled={loading}
+                className={`w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-500/30 transition-all active:scale-95 flex justify-center items-center gap-2 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+            >
+                {loading && <Loader size={18} className="animate-spin" />}
+                {loading ? 'Validando...' : 'Entrar con Credenciales'}
+            </button>
 
-                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Corporativo</label>
-                    <div className="relative">
-                        <UserIcon className="absolute left-3 top-3 text-gray-400" size={18} />
-                        <input
-                            type="email"
-                            value={googleEmail}
-                            onChange={(e) => setGoogleEmail(e.target.value)}
-                            className="w-full pl-10 pr-4 py-3 bg-gray-100 border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                            placeholder="nombre@colegiolahispanidad.es"
-                        />
-                    </div>
-                </div>
+            <div className="relative flex py-2 items-center">
+                <div className="flex-grow border-t border-gray-300"></div>
+                <span className="flex-shrink-0 mx-4 text-gray-400 text-sm">O entra con</span>
+                <div className="flex-grow border-t border-gray-300"></div>
+            </div>
 
-                {error && (
-                    <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg text-center font-medium animate-pulse">
-                        {error}
-                    </div>
-                )}
+            <button
+                type="button"
+                onClick={() => googleLogin()}
+                disabled={loading}
+                className="w-full bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold py-3 rounded-xl shadow-sm transition-all flex justify-center items-center gap-2"
+            >
+                    <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
+                    Entrar con Google
+            </button>
+        </form>
 
-                <button
-                    type="submit"
-                    disabled={loading}
-                    className={`w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-500/30 transition-all active:scale-95 flex justify-center items-center gap-2 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
-                >
-                    {loading && <Loader size={18} className="animate-spin" />}
-                    {loading ? 'Validando...' : 'Entrar con Google'}
-                </button>
-
-                 <button
-                    type="button"
-                    onClick={() => setView('default')}
-                    className="w-full text-gray-500 text-sm hover:text-indigo-600 transition"
-                >
-                     &larr; Volver a credenciales manuales
-                </button>
-            </form>
-        )}
         
         <div className="mt-8 text-center space-y-4">
             <p className="text-[10px] text-gray-400 font-medium tracking-wider uppercase border-t border-gray-100 pt-4 w-1/2 mx-auto">
