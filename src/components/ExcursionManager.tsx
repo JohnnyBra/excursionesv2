@@ -10,7 +10,7 @@ import { useDataSync } from '../hooks/useDataSync';
 import { 
   Plus, Save, DollarSign, CheckCircle, 
   Printer, Calendar, MapPin, Calculator, FileText, Copy, Trash2, FileSpreadsheet,
-  Share2, Shirt, Footprints, Bus, Clock, ArrowRight, FileBarChart, Edit, X
+  Share2, Shirt, Footprints, Bus, Clock, ArrowRight, FileBarChart, Edit, X, Menu
 } from 'lucide-react';
 
 interface ExcursionManagerProps {
@@ -104,6 +104,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
 
   // Form State
   const [formData, setFormData] = useState<Partial<Excursion>>({});
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   // Data for Selectors
   const [cyclesList, setCyclesList] = useState(db.cycles);
@@ -303,6 +304,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
     setParticipants(allParts.filter(p => p.excursionId === ex.id));
     setIsEditing(false);
     setActiveTab(mode === 'treasury' ? 'budget' : 'details');
+    setMobileMenuOpen(false);
   };
 
   const handleDelete = () => {
@@ -814,6 +816,30 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       doc.save(`control_asistencia_${selectedExcursion.title.replace(/\s+/g, '_')}.pdf`);
   };
 
+  const handleDateStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newVal = e.target.value;
+      const updates: any = { dateStart: newVal };
+
+      // Auto-calc end date
+      if (newVal) {
+          const datePart = newVal.slice(0, 10);
+          const timePart = newVal.slice(11, 16);
+
+          let endTime = '14:00'; // default
+          if (timePart === '09:00') endTime = '14:00';
+          if (timePart === '08:00') endTime = '14:30';
+
+          // Preserve current end time if not matching special rules, or just set default?
+          // User asked: "select that same day and 14:00 ... or 14:30"
+          // We'll default to same day
+
+          // Check if we should update end date (only if empty or we want to enforce logic)
+          // We'll enforce logic as requested
+          updates.dateEnd = `${datePart}T${endTime}`;
+      }
+      setFormData({ ...formData, ...updates });
+  };
+
   const isFieldDisabled = (fieldName: string) => {
       if (!isEditing) return true; 
 
@@ -835,7 +861,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   };
 
   return (
-    <div className="flex h-[calc(100vh-100px)] gap-6 relative">
+    <div className="flex h-[calc(100vh-100px)] gap-6 relative overflow-hidden">
       
       {/* ... MODALES ... */}
       {isReportModalOpen && (
@@ -919,9 +945,14 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       )}
 
       {/* Sidebar List */}
-      <div className="w-1/3 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+      <div className={`
+        bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden
+        transition-all duration-300 absolute inset-0 z-40 md:relative md:w-1/3 md:translate-x-0
+        ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-[110%]'}
+      `}>
         <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-          <h2 className="font-bold text-gray-700">
+          <h2 className="font-bold text-gray-700 flex items-center gap-2">
+             <button onClick={() => setMobileMenuOpen(false)} className="md:hidden text-gray-500"><X size={20}/></button>
              {mode === 'treasury' ? 'Tesorería' : 'Excursiones'}
           </h2>
           <div className="flex gap-1">
@@ -940,13 +971,28 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
           {excursions.map(ex => {
             const isPast = new Date(ex.dateEnd) < new Date();
+            const isCancelled = ex.status === 'CANCELLED';
+            const isPostponed = ex.status === 'POSTPONED';
+
+            let titleStyle = 'text-gray-800';
+            if (isCancelled) titleStyle = 'text-red-500 line-through';
+            else if (isPostponed) titleStyle = 'text-yellow-600';
+            else if (isPast) titleStyle = 'text-gray-400 line-through decoration-gray-400';
+
             return (
                 <div 
                 key={ex.id}
                 onClick={() => handleSelect(ex)}
                 className={`p-3 rounded-lg cursor-pointer transition border-l-4 ${selectedExcursion?.id === ex.id ? 'border-l-blue-600 bg-blue-50' : 'border-l-transparent hover:bg-gray-50'}`}
                 >
-                <h3 className={`font-semibold truncate ${isPast ? 'text-gray-400 line-through decoration-gray-400' : 'text-gray-800'}`}>{ex.title}</h3>
+                <div className="flex justify-between items-start">
+                    <h3 className={`font-semibold truncate ${titleStyle}`}>{ex.title}</h3>
+                    {ex.status && ex.status !== 'ACTIVE' && (
+                        <span className={`text-[10px] px-1 rounded border uppercase ${isCancelled ? 'border-red-200 bg-red-50 text-red-500' : 'border-yellow-200 bg-yellow-50 text-yellow-600'}`}>
+                            {ex.status === 'CANCELLED' ? 'Anulada' : 'Aplazada'}
+                        </span>
+                    )}
+                </div>
                 <div className="flex justify-between items-center mt-1">
                     <span className={`text-xs ${isPast ? 'text-gray-300' : 'text-gray-500'}`}>{new Date(ex.dateStart).toLocaleDateString()}</span>
                     <span className={`text-xs px-1 rounded truncate max-w-[80px] ${isPast ? 'bg-gray-100 text-gray-400' : 'bg-gray-200 text-gray-700'}`}>
@@ -960,19 +1006,24 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       </div>
 
       {/* Main Details */}
-      <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+      <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden w-full">
         {selectedExcursion ? (
           <>
             <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-               <div>
-                   <h2 className="text-xl font-bold text-gray-800">
-                      {isEditing ? 'Editando...' : selectedExcursion.title}
-                   </h2>
-                   {!isEditing && (
-                       <p className="text-sm text-blue-600 font-medium">
-                           {getScopeLabel(selectedExcursion.scope, selectedExcursion.targetId)}
-                       </p>
-                   )}
+               <div className="flex items-center gap-3">
+                   <button onClick={() => setMobileMenuOpen(true)} className="md:hidden p-2 -ml-2 text-gray-600"><Menu size={24}/></button>
+                   <div>
+                        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                            {isEditing ? 'Editando...' : selectedExcursion.title}
+                            {!isEditing && selectedExcursion.status === 'CANCELLED' && <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded border border-red-200">ANULADA</span>}
+                            {!isEditing && selectedExcursion.status === 'POSTPONED' && <span className="text-xs bg-yellow-100 text-yellow-600 px-2 py-0.5 rounded border border-yellow-200">APLAZADA</span>}
+                        </h2>
+                        {!isEditing && (
+                            <p className="text-sm text-blue-600 font-medium">
+                                {getScopeLabel(selectedExcursion.scope, selectedExcursion.targetId)}
+                            </p>
+                        )}
+                   </div>
                </div>
                <div className="flex gap-2">
                  {!isEditing && user?.role === UserRole.TUTOR && selectedExcursion.creatorId !== user.id && (
@@ -1085,9 +1136,18 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                 <input className="input-field" placeholder="Destino" value={formData.destination} onChange={e => setFormData({...formData, destination: e.target.value})} disabled={isFieldDisabled('destination')} />
                              </div>
 
+                             <div className="col-span-2">
+                                <label className="label-sm">Estado</label>
+                                <select className="input-field" value={formData.status || 'ACTIVE'} onChange={e => setFormData({...formData, status: e.target.value as any})} disabled={isFieldDisabled('status')}>
+                                    <option value="ACTIVE">Confirmada (Activa)</option>
+                                    <option value="POSTPONED">Aplazada</option>
+                                    <option value="CANCELLED">Anulada</option>
+                                </select>
+                             </div>
+
                              <div>
                                 <label className="label-sm">Salida</label>
-                                <input type="datetime-local" className="input-field" value={formData.dateStart?.slice(0, 16)} onChange={e => setFormData({...formData, dateStart: e.target.value})} disabled={isFieldDisabled('dateStart')} />
+                                <input type="datetime-local" className="input-field" value={formData.dateStart?.slice(0, 16)} onChange={handleDateStartChange} disabled={isFieldDisabled('dateStart')} />
                              </div>
                              <div>
                                 <label className="label-sm">Llegada</label>
@@ -1290,7 +1350,13 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-gray-300">Selecciona una excursión</div>
+          <div className="flex-1 flex flex-col items-center justify-center text-gray-300 w-full">
+            <button onClick={() => setMobileMenuOpen(true)} className="md:hidden flex flex-col items-center gap-2 text-blue-600">
+                <Menu size={48}/>
+                <span className="font-bold">Ver Excursiones</span>
+            </button>
+            <span className="hidden md:inline">Selecciona una excursión</span>
+          </div>
         )}
       </div>
     </div>
