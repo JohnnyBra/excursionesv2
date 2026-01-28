@@ -295,6 +295,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
     setParticipants([]); 
     setIsEditing(true);
     setActiveTab('details');
+    setMobileMenuOpen(false);
   };
 
   const handleSelect = (ex: Excursion) => {
