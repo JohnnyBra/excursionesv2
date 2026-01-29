@@ -5,6 +5,55 @@ import { useAuth } from '../App';
 import { Trash2, UserPlus, Edit, Upload, Download, Database, Users, GraduationCap, School, Search, KeyRound } from 'lucide-react';
 import { useToast } from './ui/Toast';
 
+const getSurname = (fullName: string) => {
+    const parts = fullName.trim().split(/\s+/);
+    if (parts.length >= 3) {
+        return parts.slice(-2).join(' ');
+    }
+    if (parts.length === 2) {
+        return parts[1];
+    }
+    return fullName;
+};
+
+const getCyclePriority = (name: string) => {
+    const n = name.toLowerCase();
+    if (n.includes('infantil')) return 1;
+    if (n.includes('primaria')) {
+        if (n.includes('1º') || n.includes('1er')) return 10;
+        if (n.includes('2º') || n.includes('2do')) return 11;
+        if (n.includes('3º') || n.includes('3er')) return 12;
+        return 2; // Generic Primaria
+    }
+    if (n.includes('eso') || n.includes('secundaria')) {
+        if (n.includes('1º') || n.includes('1er')) return 20;
+        if (n.includes('2º') || n.includes('2do')) return 21;
+        if (n.includes('3º') || n.includes('3er')) return 22;
+        if (n.includes('4º') || n.includes('4to')) return 23;
+        return 3;
+    }
+    if (n.includes('bachillerato')) return 40;
+    return 100;
+};
+
+const compareClasses = (a: ClassGroup, b: ClassGroup, cycles: Cycle[]) => {
+    const cycleA = cycles.find(c => c.id === a.cycleId);
+    const cycleB = cycles.find(c => c.id === b.cycleId);
+
+    const prioA = cycleA ? getCyclePriority(cycleA.name) : 999;
+    const prioB = cycleB ? getCyclePriority(cycleB.name) : 999;
+
+    if (prioA !== prioB) return prioA - prioB;
+
+    return a.name.localeCompare(b.name);
+};
+
+const compareUsers = (a: User, b: User) => {
+    const surnameA = getSurname(a.name || '');
+    const surnameB = getSurname(b.name || '');
+    return surnameA.localeCompare(surnameB);
+};
+
 export const UserManager: React.FC = () => {
     const { user } = useAuth();
     const { addToast } = useToast();
@@ -92,10 +141,10 @@ export const UserManager: React.FC = () => {
     // Filter Logic
     const filteredUsers = users.filter(u => {
         const term = userSearch.toLowerCase();
-        return u.name.toLowerCase().includes(term) || 
-               u.username.toLowerCase().includes(term) || 
-               u.role.toLowerCase().includes(term);
-    });
+        return (u.name || '').toLowerCase().includes(term) ||
+               (u.username || '').toLowerCase().includes(term) ||
+               (u.role || '').toLowerCase().includes(term);
+    }).sort(compareUsers);
 
     // --- STUDENT MANAGEMENT ---
     const handleSaveStudent = () => {
@@ -326,7 +375,7 @@ export const UserManager: React.FC = () => {
                                     </select>
                                     <select className="border p-2 rounded flex-1" value={editingClass.tutorId} onChange={e => setEditingClass({...editingClass, tutorId: e.target.value})}>
                                         <option value="">Asignar Tutor...</option>
-                                        {users.filter(u => u.role === UserRole.TUTOR).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                                        {users.filter(u => u.role === UserRole.TUTOR).sort(compareUsers).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                                     </select>
                                     <button onClick={handleUpdateClass} className="bg-orange-600 text-white px-4 rounded font-medium">Actualizar</button>
                                     <button onClick={() => setEditingClass(null)} className="text-gray-500 px-2">Cancelar</button>
@@ -343,7 +392,7 @@ export const UserManager: React.FC = () => {
                                     </select>
                                     <select className="border p-2 rounded flex-1" value={newClass.tutorId || ''} onChange={e => setNewClass({...newClass, tutorId: e.target.value})}>
                                         <option value="">Asignar Tutor...</option>
-                                        {users.filter(u => u.role === UserRole.TUTOR).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                                        {users.filter(u => u.role === UserRole.TUTOR).sort(compareUsers).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                                     </select>
                                     <button onClick={handleAddClass} className="bg-blue-600 text-white px-4 rounded font-medium">Añadir</button>
                                 </div>
@@ -353,7 +402,7 @@ export const UserManager: React.FC = () => {
                         <div>
                             <h3 className="font-bold mb-4">Clases Existentes</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {classes.map(c => (
+                                {[...classes].sort((a, b) => compareClasses(a, b, cycles)).map(c => (
                                     <div key={c.id} className="border p-4 rounded-lg shadow-sm flex justify-between items-center">
                                         <div>
                                             <h4 className="font-bold text-lg">{c.name}</h4>
