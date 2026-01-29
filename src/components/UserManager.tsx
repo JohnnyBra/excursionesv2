@@ -236,6 +236,18 @@ export const UserManager: React.FC = () => {
                                     <option value={UserRole.TESORERIA}>Tesorería</option>
                                     <option value={UserRole.COORDINACION}>Coordinación</option>
                                 </select>
+
+                                {editingUser.role === UserRole.TUTOR && (
+                                    <select
+                                        className="input-field border p-2 rounded col-span-2 bg-purple-50 border-purple-200 text-purple-700"
+                                        value={editingUser.coordinatorCycleId || ''}
+                                        onChange={e => setEditingUser({...editingUser, coordinatorCycleId: e.target.value})}
+                                    >
+                                        <option value="">-- Sin Rol de Coordinación --</option>
+                                        {cycles.map(c => <option key={c.id} value={c.id}>Coordinador: {c.name}</option>)}
+                                    </select>
+                                )}
+
                                 <div className="col-span-2 flex justify-between items-center mt-2">
                                      <button
                                         onClick={() => {
@@ -273,7 +285,14 @@ export const UserManager: React.FC = () => {
                                             <tr key={u.id} className="border-t hover:bg-gray-50">
                                                 <td className="p-3 font-medium">{u.name}</td>
                                                 <td className="p-3 text-gray-500">{u.username}</td>
-                                                <td className="p-3"><span className="bg-gray-100 px-2 py-1 rounded text-xs">{u.role}</span></td>
+                                                <td className="p-3">
+                                                    <span className="bg-gray-100 px-2 py-1 rounded text-xs">{u.role}</span>
+                                                    {u.coordinatorCycleId && (
+                                                        <span className="ml-2 bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs border border-purple-200">
+                                                            COORD
+                                                        </span>
+                                                    )}
+                                                </td>
                                                 <td className="p-3 text-right">
                                                     <button onClick={() => setEditingUser(u)} className="text-blue-600 mr-2"><Edit size={16}/></button>
                                                     <button onClick={() => handleDeleteUser(u.id)} className="text-red-600"><Trash2 size={16}/></button>

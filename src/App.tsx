@@ -16,6 +16,8 @@ interface AuthContextType {
   login: (u: string, p: string) => Promise<boolean>;
   loginWithGoogle: (email: string) => Promise<boolean>;
   logout: () => void;
+  coordinatorMode: boolean;
+  setCoordinatorMode: (mode: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -271,6 +273,7 @@ const Settings = () => {
 const AppContent = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [coordinatorMode, setCoordinatorMode] = useState(false);
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -307,7 +310,8 @@ const AppContent = () => {
             email: prismaUser.email || '',
             role: prismaUser.role, // TUTOR, DIRECCION, etc.
             classId: prismaUser.classId, // Si es tutor, su clase
-            password: '' // No guardamos password
+            password: '', // No guardamos password
+            coordinatorCycleId: prismaUser.coordinatorCycleId
         };
 
         // Opcional: Si queremos que este usuario exista en local DB para referencias futuras
@@ -323,7 +327,8 @@ const AppContent = () => {
             // (Evita sobrescribir passwords de usuarios de test con string vacío)
             db.updateUser({
                 ...userMapped,
-                password: existingLocalUser.password || userMapped.password
+                password: existingLocalUser.password || userMapped.password,
+                coordinatorCycleId: existingLocalUser.coordinatorCycleId || userMapped.coordinatorCycleId
             });
         }
 
@@ -372,7 +377,7 @@ const AppContent = () => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, login, loginWithGoogle, logout, coordinatorMode, setCoordinatorMode }}>
       <HashRouter>
         <Routes>
           <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />

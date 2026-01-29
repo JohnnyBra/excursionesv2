@@ -64,7 +64,7 @@ const getStudentSurname = (fullName: string): string => {
 };
 
 export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
-  const { user } = useAuth();
+  const { user, coordinatorMode } = useAuth();
   const { addToast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
@@ -144,7 +144,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
              }
         }
     }
-  }, [user, dbVersion]); 
+  }, [user, dbVersion, coordinatorMode]);
 
   // Selección automática desde Dashboard
   useEffect(() => {
@@ -173,11 +173,19 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   const visibleParticipants = useMemo(() => {
     let result = [...participants];
 
-    // 1. Filter for Tutor
+    // 1. Filter for Tutor (or Coordinator Mode)
     if (user?.role === UserRole.TUTOR) {
         result = result.filter(p => {
             const student = studentsMap[p.studentId];
-            return student && student.classId === currentUser?.classId;
+            if (!student) return false;
+
+            if (coordinatorMode && user.coordinatorCycleId) {
+                 // Check if student class is in cycle
+                 const studentClass = classesList.find(c => c.id === student.classId);
+                 return studentClass?.cycleId === user.coordinatorCycleId;
+            } else {
+                 return student.classId === currentUser?.classId;
+            }
         });
     }
 
@@ -217,12 +225,21 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
     let visible = all;
 
     if (user?.role === UserRole.TUTOR) {
-        const myClass = db.classes.find(c => c.id === currentUser?.classId);
-        visible = all.filter(e => 
-            e.scope === ExcursionScope.GLOBAL || 
-            (e.scope === ExcursionScope.CICLO && e.targetId === myClass?.cycleId) ||
-            (e.scope === ExcursionScope.CLASE && e.targetId === currentUser?.classId)
-        );
+        if (coordinatorMode && user.coordinatorCycleId) {
+             const cycleClasses = db.classes.filter(c => c.cycleId === user.coordinatorCycleId).map(c => c.id);
+             visible = all.filter(e =>
+                e.scope === ExcursionScope.GLOBAL ||
+                (e.scope === ExcursionScope.CICLO && e.targetId === user.coordinatorCycleId) ||
+                (e.scope === ExcursionScope.CLASE && cycleClasses.includes(e.targetId))
+            );
+        } else {
+            const myClass = db.classes.find(c => c.id === currentUser?.classId);
+            visible = all.filter(e =>
+                e.scope === ExcursionScope.GLOBAL ||
+                (e.scope === ExcursionScope.CICLO && e.targetId === myClass?.cycleId) ||
+                (e.scope === ExcursionScope.CLASE && e.targetId === currentUser?.classId)
+            );
+        }
     } 
     
     setExcursions(visible);
@@ -262,9 +279,13 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
     if (user?.role === UserRole.TESORERIA) return; 
 
     let initialCycleId = '';
-    if (user?.role === UserRole.TUTOR && currentUser?.classId) {
-        const myClass = db.classes.find(c => c.id === currentUser.classId);
-        if (myClass) initialCycleId = myClass.cycleId;
+    if (user?.role === UserRole.TUTOR) {
+        if (coordinatorMode && user.coordinatorCycleId) {
+             initialCycleId = user.coordinatorCycleId;
+        } else if (currentUser?.classId) {
+             const myClass = db.classes.find(c => c.id === currentUser.classId);
+             if (myClass) initialCycleId = myClass.cycleId;
+        }
     }
 
     const newExcursion: Excursion = {
@@ -430,8 +451,14 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
     if (user?.role === UserRole.DIRECCION || user?.role === UserRole.ADMIN) return true;
     if (user?.role === UserRole.TUTOR) {
         const student = studentsMap[studentId];
-        // Check if student exists and their classId matches the current user's classId
-        return student && student.classId === currentUser?.classId;
+        if (!student) return false;
+
+        if (coordinatorMode && user.coordinatorCycleId) {
+             const studentClass = classesList.find(c => c.id === student.classId);
+             return studentClass?.cycleId === user.coordinatorCycleId;
+        }
+
+        return student.classId === currentUser?.classId;
     }
     return false;
   };

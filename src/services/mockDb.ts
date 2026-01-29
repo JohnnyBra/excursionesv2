@@ -171,7 +171,8 @@ const fetchAndLoadData = async () => {
                     email: u.email,
                     role: u.role, // Asegurar que coincida con enum UserRole
                     classId: u.classId,
-                    password: '' // Los usuarios de proxy no traen contraseña
+                    password: '', // Los usuarios de proxy no traen contraseña
+                    coordinatorCycleId: u.coordinatorCycleId
                 }));
 
                 // Mergear: Mantener usuarios locales que tienen password (ej. direccion)
@@ -181,10 +182,16 @@ const fetchAndLoadData = async () => {
                 mappedProxyUsers.forEach(proxyUser => {
                     const existingIdx = mergedUsers.findIndex(u => u.id === proxyUser.id);
                     if (existingIdx >= 0) {
+                        // Preservar coordinatorCycleId local si existe
+                        const existingCoordinatorId = mergedUsers[existingIdx].coordinatorCycleId;
+
                         // Si existe, solo sobrescribimos si el local NO tiene password (es un caché antiguo)
                         // Si el local tiene password, lo respetamos (es un usuario local admin)
                         if (!mergedUsers[existingIdx].password) {
-                            mergedUsers[existingIdx] = proxyUser;
+                            mergedUsers[existingIdx] = {
+                                ...proxyUser,
+                                coordinatorCycleId: existingCoordinatorId || proxyUser.coordinatorCycleId
+                            };
                         }
                     } else {
                         mergedUsers.push(proxyUser);
@@ -285,7 +292,8 @@ export const db = {
                       name: res.name,
                       email: res.email,
                       role: res.role,
-                      classId: res.classId // Might be undefined, which is fine
+                      classId: res.classId, // Might be undefined, which is fine
+                      coordinatorCycleId: res.coordinatorCycleId
                   }
               };
           }
