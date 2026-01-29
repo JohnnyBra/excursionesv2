@@ -251,6 +251,7 @@ export const db = {
     const success = await fetchAndLoadData();
     if (success) {
         isInitialized = true;
+        if(localState.cycles.length === 0) localState.cycles = MOCK_CYCLES;
     } else {
         // Fallback
         if(localState.cycles.length === 0) localState.cycles = MOCK_CYCLES;
