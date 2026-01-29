@@ -32,6 +32,7 @@ export interface User {
   email: string;
   role: UserRole;
   classId?: string;
+  coordinatorCycleId?: string;
 }
 
 export interface PrismaUser {
@@ -41,6 +42,7 @@ export interface PrismaUser {
   email: string;
   role: UserRole;
   classId?: string;
+  coordinatorCycleId?: string;
 }
 
 export interface PrismaClass {
