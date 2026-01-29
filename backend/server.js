@@ -10,6 +10,7 @@ const axios = require('axios'); // Importar Axios
 const app = express();
 const PORT = 3005;
 const DB_FILE = path.join(__dirname, 'database.json');
+const SEED_FILE = path.join(__dirname, 'data_seed.json');
 
 // --- CONSTANTES PRISMA ---
 const PRISMA_URL = 'https://prisma.bibliohispa.es';
@@ -45,7 +46,7 @@ app.set('trust proxy', 1); // Confía en el primer proxy (Cloudflare)
 app.use(express.static(path.join(__dirname, '../dist')));
 
 // --- Datos Iniciales (Semilla) Actualizados ---
-const INITIAL_DATA = {
+let INITIAL_DATA = {
   users: [
     { id: 'u1', username: 'direccion', password: '123', name: 'Ana Directora', email: 'admin@hispanidad.com', role: 'DIRECCION' }
   ],
@@ -55,6 +56,17 @@ const INITIAL_DATA = {
   excursions: [],
   participations: []
 };
+
+// Intentar cargar semilla consolidada
+if (fs.existsSync(SEED_FILE)) {
+  try {
+    const seedContent = fs.readFileSync(SEED_FILE, 'utf8');
+    INITIAL_DATA = JSON.parse(seedContent);
+    console.log("✅ Semilla consolidada cargada exitosamente.");
+  } catch (error) {
+    console.error("⚠️ Error leyendo archivo semilla, usando valores por defecto:", error.message);
+  }
+}
 
 // --- Helper Funciones ---
 const readDb = () => {
