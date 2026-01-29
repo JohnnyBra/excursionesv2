@@ -46,8 +46,9 @@ app.use(express.static(path.join(__dirname, '../dist')));
 
 // --- Datos Iniciales (Semilla) Actualizados ---
 const INITIAL_DATA = {
+  // Solo usuario Dirección para poder hacer Login e Importar
   users: [
-    { id: 'u1', username: 'direccion', password: '123', name: 'Ana Directora', email: 'admin@hispanidad.com', role: 'DIRECCION' }
+    { id: 'u1', username: 'direccion', password: '123', name: 'Dirección', email: 'direccion@hispanidad.com', role: 'DIRECCION' }
   ],
   cycles: [],
   classes: [],
