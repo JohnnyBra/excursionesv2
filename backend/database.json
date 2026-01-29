@@ -516,6 +516,15 @@
       "role": "TUTOR",
       "username": "rocio.vazquez",
       "password": ""
+    },
+    {
+      "id": "c083b2d8-6c87-4cd4-9003-384bbe4d38a6",
+      "username": "coord_test",
+      "name": "Test Coordinator",
+      "email": "coord@test.com",
+      "role": "TUTOR",
+      "password": "123",
+      "coordinatorCycleId": "c1"
     }
   ],
   "cycles": [
