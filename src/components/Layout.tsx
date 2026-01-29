@@ -12,7 +12,7 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, coordinatorMode, setCoordinatorMode } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
@@ -85,6 +85,23 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           
           {(user?.role === UserRole.TESORERIA || user?.role === UserRole.DIRECCION) && (
             <NavItem icon={Wallet} label="Tesorería" path="/treasury" />
+          )}
+
+          {user?.coordinatorCycleId && (
+            <div className="px-4 py-2 mt-2">
+                <div className="flex items-center justify-between bg-purple-50 border border-purple-100 p-3 rounded-lg">
+                    <div className="flex flex-col">
+                        <span className="text-xs font-bold text-purple-800">Coordinador</span>
+                        <span className="text-[10px] text-purple-600">Ver todo el ciclo</span>
+                    </div>
+                    <button
+                        onClick={() => setCoordinatorMode(!coordinatorMode)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${coordinatorMode ? 'bg-purple-600' : 'bg-gray-300'}`}
+                    >
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${coordinatorMode ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                </div>
+            </div>
           )}
 
           <div className="pt-4 mt-4 border-t border-gray-100">

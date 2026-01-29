@@ -273,15 +273,25 @@ const fetchPrismaData = async () => {
 
         // 3. Procesar Usuarios (Profesores)
         const rawUsers = usersRes.data || [];
-        const users = rawUsers.map(u => ({
-            id: u.id,
-            name: u.name,
-            email: u.email,
-            classId: u.classId,
-            role: 'TUTOR', // Requisito: Siempre será TUTOR
-            username: u.username || u.email.split('@')[0], // Fallback para compatibilidad
-            password: '' // Sin contraseña desde export
-        }));
+        const users = rawUsers.map(u => {
+            let role = 'TUTOR';
+            const username = u.username || u.email.split('@')[0];
+
+            // Fix: Detectar Tesorería por nombre de usuario
+            if (username.toLowerCase().includes('tesoreria')) {
+                role = 'TESORERIA';
+            }
+
+            return {
+                id: u.id,
+                name: u.name,
+                email: u.email,
+                classId: u.classId,
+                role: role,
+                username: username,
+                password: '' // Sin contraseña desde export
+            };
+        });
 
         // 4. Vincular Tutor a Clase (Bidireccional)
         users.forEach(u => {
