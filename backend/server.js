@@ -275,7 +275,7 @@ const fetchPrismaData = async () => {
         // 3. Procesar Usuarios (Profesores)
         const rawUsers = usersRes.data || [];
         const users = rawUsers.map(u => {
-            let role = 'TUTOR';
+            let role = u.role || 'TUTOR';
             const username = u.username || u.email.split('@')[0];
 
             // Fix: Detectar Tesorería por nombre de usuario
@@ -290,7 +290,8 @@ const fetchPrismaData = async () => {
                 classId: u.classId,
                 role: role,
                 username: username,
-                password: '' // Sin contraseña desde export
+                password: '', // Sin contraseña desde export
+                coordinatorCycleId: u.coordinatorCycleId
             };
         });
 
