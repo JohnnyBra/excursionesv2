@@ -283,19 +283,36 @@ export const db = {
           if (!res) return { success: false, message: "Error de conexión con el servidor" };
 
           // Fix: Normalize response if it's flat
-          if (res.success && !res.user) {
-              return {
-                  success: true,
-                  user: {
-                      id: res.id,
-                      username: username.trim(),
-                      name: res.name,
-                      email: res.email,
-                      role: res.role,
-                      classId: res.classId, // Might be undefined, which is fine
-                      coordinatorCycleId: res.coordinatorCycleId
-                  }
+          let proxyUser = res.user;
+          if (res.success && !proxyUser) {
+              proxyUser = {
+                  id: res.id,
+                  username: username.trim(),
+                  name: res.name,
+                  email: res.email,
+                  role: res.role,
+                  classId: res.classId, // Might be undefined, which is fine
+                  coordinatorCycleId: res.coordinatorCycleId
               };
+          }
+
+          if (res.success && proxyUser) {
+              // 3. MERGE WITH LOCAL STATE: Preservar datos locales (Clase, Coordinación, Usuario simple)
+              // Buscamos si ya conocemos a este usuario localmente para no perder sus asignaciones manuales
+              const localUser = localState.users.find(u => u.id === proxyUser.id || (u.email && u.email.toLowerCase() === proxyUser.email.toLowerCase()));
+
+              if (localUser) {
+                  console.log(`✅ Merging proxy user [${proxyUser.username}] with local data...`);
+                  proxyUser = {
+                      ...proxyUser,
+                      // Preservar datos locales críticos si existen
+                      classId: localUser.classId || proxyUser.classId,
+                      coordinatorCycleId: localUser.coordinatorCycleId || proxyUser.coordinatorCycleId,
+                      username: localUser.username || proxyUser.username
+                  };
+              }
+
+              return { success: true, user: proxyUser };
           }
 
           return res; // { success: true, user: ... }

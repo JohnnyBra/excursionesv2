@@ -361,7 +361,10 @@ export const UserManager: React.FC = () => {
                                             <p className="text-xs text-blue-600 mt-1">Tutor: {users.find(u => u.id === c.tutorId)?.name || 'Sin asignar'}</p>
                                         </div>
                                         <div className="flex gap-2">
-                                            <button onClick={() => setEditingClass(c)} className="text-blue-600 hover:text-blue-800">
+                                    <button onClick={() => {
+                                        setEditingClass(c);
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    }} className="text-blue-600 hover:text-blue-800">
                                                 <Edit size={18} />
                                             </button>
                                             <button onClick={() => { if(confirm('¿Borrar clase?')) { db.deleteClass(c.id); refreshData(); } }} className="text-red-400 hover:text-red-600">
