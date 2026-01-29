@@ -320,20 +320,22 @@ const AppContent = () => {
         const localUsers = db.getUsers();
         const existingLocalUser = localUsers.find(u => u.id === userMapped.id);
 
+        // MERGE: Combinar datos de Prisma con datos locales (password, coordinatorCycleId)
+        // Esto es CRÍTICO para que el coordinatorCycleId se mantenga en la sesión si Prisma no lo envía
+        const mergedUser: User = {
+            ...userMapped,
+            password: existingLocalUser ? (existingLocalUser.password || userMapped.password) : userMapped.password,
+            coordinatorCycleId: existingLocalUser ? (existingLocalUser.coordinatorCycleId || userMapped.coordinatorCycleId) : userMapped.coordinatorCycleId
+        };
+
         if (!existingLocalUser) {
-            db.addUser(userMapped);
+            db.addUser(mergedUser);
         } else {
-            // Actualizar nombre si cambió en Prisma, pero mantener password local si existe
-            // (Evita sobrescribir passwords de usuarios de test con string vacío)
-            db.updateUser({
-                ...userMapped,
-                password: existingLocalUser.password || userMapped.password,
-                coordinatorCycleId: existingLocalUser.coordinatorCycleId || userMapped.coordinatorCycleId
-            });
+            db.updateUser(mergedUser);
         }
 
-        setUser(userMapped);
-        localStorage.setItem('auth_user', JSON.stringify(userMapped));
+        setUser(mergedUser);
+        localStorage.setItem('auth_user', JSON.stringify(mergedUser));
         addToast(`Bienvenido/a ${userMapped.name}`, 'success');
         return true;
     }
