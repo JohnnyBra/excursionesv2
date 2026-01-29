@@ -230,7 +230,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
              visible = all.filter(e =>
                 e.scope === ExcursionScope.GLOBAL ||
                 (e.scope === ExcursionScope.CICLO && e.targetId === user.coordinatorCycleId) ||
-                (e.scope === ExcursionScope.CLASE && cycleClasses.includes(e.targetId))
+                (e.scope === ExcursionScope.CLASE && e.targetId && cycleClasses.includes(e.targetId))
             );
         } else {
             const myClass = db.classes.find(c => c.id === currentUser?.classId);
