@@ -61,6 +61,7 @@ const INITIAL_DATA = {
 
 // In-memory cache
 let dbCache = null;
+let writeQueue = Promise.resolve();
 
 const initDb = () => {
   if (!fs.existsSync(DB_FILE)) {
@@ -88,8 +89,14 @@ const readDb = () => {
 };
 
 const writeDb = (data) => {
-  dbCache = data; // Update cache
-  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
+  dbCache = data; // Update cache immediately
+  // Chain write to ensure serialization without blocking event loop
+  writeQueue = writeQueue.then(async () => {
+    await fs.promises.writeFile(DB_FILE, JSON.stringify(data, null, 2));
+  }).catch(err => {
+    console.error("Error writing to DB:", err);
+  });
+  return writeQueue;
 };
 
 // --- API Endpoints ---
@@ -101,7 +108,7 @@ app.get('/api/db', (req, res) => {
 });
 
 // 2. Guardar entidad genérica (Create/Update)
-app.post('/api/sync/:entity', (req, res) => {
+app.post('/api/sync/:entity', async (req, res) => {
   const { entity } = req.params; // users, students, etc.
   const item = req.body;
   const db = readDb();
@@ -115,7 +122,7 @@ app.post('/api/sync/:entity', (req, res) => {
     db[entity].push(item); // Create
   }
 
-  writeDb(db);
+  await writeDb(db);
   
   // EMITIR EVENTO SOCKET
   io.emit('db_update', { entity, action: 'update' });
@@ -124,7 +131,7 @@ app.post('/api/sync/:entity', (req, res) => {
 });
 
 // 2.5 Bulk Guardar entidad genérica
-app.post('/api/sync/:entity/bulk', (req, res) => {
+app.post('/api/sync/:entity/bulk', async (req, res) => {
   const { entity } = req.params;
   const items = req.body;
 
@@ -145,7 +152,7 @@ app.post('/api/sync/:entity/bulk', (req, res) => {
     }
   });
 
-  writeDb(db);
+  await writeDb(db);
 
   // EMITIR EVENTO SOCKET (Solo uno para todo el lote)
   io.emit('db_update', { entity, action: 'bulk_update', count: items.length });
@@ -154,13 +161,13 @@ app.post('/api/sync/:entity/bulk', (req, res) => {
 });
 
 // 3. Borrar entidad
-app.delete('/api/sync/:entity/:id', (req, res) => {
+app.delete('/api/sync/:entity/:id', async (req, res) => {
   const { entity, id } = req.params;
   const db = readDb();
 
   if (db[entity]) {
     db[entity] = db[entity].filter(x => x.id !== id);
-    writeDb(db);
+    await writeDb(db);
     
     // EMITIR EVENTO SOCKET
     io.emit('db_update', { entity, action: 'delete', id });
@@ -169,10 +176,10 @@ app.delete('/api/sync/:entity/:id', (req, res) => {
 });
 
 // 4. Restaurar Backup Completo
-app.post('/api/restore', (req, res) => {
+app.post('/api/restore', async (req, res) => {
   const fullData = req.body;
   if(fullData.users && fullData.excursions) {
-    writeDb(fullData);
+    await writeDb(fullData);
     
     // EMITIR EVENTO SOCKET (Full reload)
     io.emit('db_update', { entity: 'all', action: 'restore' });
@@ -416,7 +423,7 @@ app.post('/api/import/prisma', async (req, res) => {
             students: mergedStudents
         };
 
-        writeDb(newDb);
+        await writeDb(newDb);
         io.emit('db_update', { entity: 'all', action: 'import' });
 
         res.json({
