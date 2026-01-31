@@ -107,6 +107,36 @@ app.post('/api/sync/:entity', (req, res) => {
   res.json({ success: true });
 });
 
+// 2.5 Bulk Guardar entidad genérica
+app.post('/api/sync/:entity/bulk', (req, res) => {
+  const { entity } = req.params;
+  const items = req.body;
+
+  if (!Array.isArray(items)) {
+    return res.status(400).json({ error: "Body must be an array" });
+  }
+
+  const db = readDb();
+
+  if (!db[entity]) db[entity] = [];
+
+  items.forEach(item => {
+    const index = db[entity].findIndex(x => x.id === item.id);
+    if (index >= 0) {
+      db[entity][index] = item; // Update
+    } else {
+      db[entity].push(item); // Create
+    }
+  });
+
+  writeDb(db);
+
+  // EMITIR EVENTO SOCKET (Solo uno para todo el lote)
+  io.emit('db_update', { entity, action: 'bulk_update', count: items.length });
+
+  res.json({ success: true, count: items.length });
+});
+
 // 3. Borrar entidad
 app.delete('/api/sync/:entity/:id', (req, res) => {
   const { entity, id } = req.params;

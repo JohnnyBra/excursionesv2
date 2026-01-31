@@ -51,7 +51,7 @@ const generateParticipationsForExcursion = (exc: Excursion) => {
   }));
 
   localState.participations.push(...newParticipations);
-  newParticipations.forEach(p => syncItem('participations', p));
+  syncItems('participations', newParticipations);
 };
 
 // --- Helper Fetch ---
@@ -84,6 +84,10 @@ const syncItem = (entity: string, item: any) => {
   // Nota: No necesitamos notificar listeners aquí manualmente, 
   // el socket nos devolverá el evento 'db_update' y recargará todo.
   // Sin embargo, para respuesta inmediata UI (Optimistic UI), ya actualizamos localState abajo.
+};
+
+const syncItems = (entity: string, items: any[]) => {
+  apiCall(`/sync/${entity}/bulk`, 'POST', items);
 };
 
 const deleteItem = (entity: string, id: string) => {
