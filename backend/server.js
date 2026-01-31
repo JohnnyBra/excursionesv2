@@ -58,21 +58,37 @@ const INITIAL_DATA = {
 };
 
 // --- Helper Funciones ---
-const readDb = () => {
+
+// In-memory cache
+let dbCache = null;
+
+const initDb = () => {
   if (!fs.existsSync(DB_FILE)) {
     fs.writeFileSync(DB_FILE, JSON.stringify(INITIAL_DATA, null, 2));
-    return INITIAL_DATA;
-  }
-  try {
-    const data = fs.readFileSync(DB_FILE, 'utf8');
-    return JSON.parse(data);
-  } catch (err) {
-    console.error("Error leyendo DB:", err);
-    return INITIAL_DATA;
+    dbCache = JSON.parse(JSON.stringify(INITIAL_DATA));
+  } else {
+    try {
+      const data = fs.readFileSync(DB_FILE, 'utf8');
+      dbCache = JSON.parse(data);
+    } catch (err) {
+      console.error("Error leyendo DB al inicio:", err);
+      dbCache = JSON.parse(JSON.stringify(INITIAL_DATA));
+    }
   }
 };
 
+// Initialize cache on startup
+initDb();
+
+const readDb = () => {
+  if (!dbCache) {
+    initDb();
+  }
+  return dbCache;
+};
+
 const writeDb = (data) => {
+  dbCache = data; // Update cache
   fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
 };
 
