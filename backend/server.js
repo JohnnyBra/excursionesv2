@@ -367,47 +367,46 @@ app.post('/api/import/prisma', async (req, res) => {
         const currentDb = readDb();
 
         // A) Ciclos
-        const mergedCycles = [...currentDb.cycles];
+        const cycleMap = new Map(currentDb.cycles.map(c => [c.id, c]));
         prismaData.cycles.forEach(pc => {
-            if (!mergedCycles.find(c => c.id === pc.id)) {
-                mergedCycles.push(pc);
+            if (!cycleMap.has(pc.id)) {
+                cycleMap.set(pc.id, pc);
             }
         });
+        const mergedCycles = Array.from(cycleMap.values());
 
         // B) Clases
-        const mergedClasses = [...currentDb.classes];
+        const classMap = new Map(currentDb.classes.map(c => [c.id, c]));
         prismaData.classes.forEach(pc => {
-            const idx = mergedClasses.findIndex(c => c.id === pc.id);
-            if (idx === -1) {
-                mergedClasses.push(pc);
+            const existing = classMap.get(pc.id);
+            if (existing) {
+                classMap.set(pc.id, { ...existing, ...pc });
             } else {
-                mergedClasses[idx] = { ...mergedClasses[idx], ...pc };
+                classMap.set(pc.id, pc);
             }
         });
+        const mergedClasses = Array.from(classMap.values());
 
         // C) Usuarios
-        const mergedUsers = [...currentDb.users];
+        const userMap = new Map(currentDb.users.map(u => [u.id, u]));
         prismaData.users.forEach(pu => {
-            const idx = mergedUsers.findIndex(u => u.id === pu.id);
-            if (idx >= 0) {
-                if (!mergedUsers[idx].password) {
-                     mergedUsers[idx] = pu;
+            const existing = userMap.get(pu.id);
+            if (existing) {
+                if (!existing.password) {
+                     userMap.set(pu.id, pu);
                 }
             } else {
-                mergedUsers.push(pu);
+                userMap.set(pu.id, pu);
             }
         });
+        const mergedUsers = Array.from(userMap.values());
 
         // D) Alumnos
-        const mergedStudents = [...currentDb.students];
+        const studentMap = new Map(currentDb.students.map(s => [s.id, s]));
         prismaData.students.forEach(ps => {
-            const idx = mergedStudents.findIndex(s => s.id === ps.id);
-            if (idx === -1) {
-                mergedStudents.push(ps);
-            } else {
-                mergedStudents[idx] = ps;
-            }
+            studentMap.set(ps.id, ps);
         });
+        const mergedStudents = Array.from(studentMap.values());
 
         const newDb = {
             ...currentDb,
