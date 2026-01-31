@@ -153,14 +153,14 @@ const fetchAndLoadData = async () => {
                 }));
 
                 // Mergear Clases: Preservar locales
-                const mergedClasses = [...localState.classes];
+                // Optimización O(N): Usar Map para búsqueda rápida por ID
+                const mergedClassesMap = new Map(localState.classes.map(c => [c.id, c]));
                 mappedProxyClasses.forEach(pc => {
-                    const exists = mergedClasses.find(c => c.id === pc.id);
-                    if (!exists) {
-                        mergedClasses.push(pc);
+                    if (!mergedClassesMap.has(pc.id)) {
+                        mergedClassesMap.set(pc.id, pc);
                     }
                 });
-                localState.classes = mergedClasses;
+                localState.classes = Array.from(mergedClassesMap.values());
             }
 
             // --- PROCESAR USUARIOS (MERGE CON LOCALES) ---
