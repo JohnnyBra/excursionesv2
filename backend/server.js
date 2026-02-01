@@ -212,8 +212,26 @@ app.post('/api/proxy/login', async (req, res) => {
 
     console.log(`✅ Proxy Login éxito para ${username}:`, response.data);
 
+    let data = response.data;
+    // Fix: Normalize response if it's flat
+    if (data.success && !data.user) {
+      const { id, name, email, role, classId, coordinatorCycleId } = data;
+      data = {
+        success: true,
+        user: {
+          id,
+          username: username.trim(),
+          name,
+          email,
+          role,
+          classId,
+          coordinatorCycleId
+        }
+      };
+    }
+
     // Retornamos la respuesta tal cual
-    res.json(response.data);
+    res.json(data);
   } catch (error) {
     console.error(`❌ Error en Proxy Login para ${req.body?.username}:`, error.message);
     if (error.response) {
