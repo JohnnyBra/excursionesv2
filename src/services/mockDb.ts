@@ -287,19 +287,7 @@ export const db = {
 
           if (!res) return { success: false, message: "Error de conexión con el servidor" };
 
-          // Fix: Normalize response if it's flat
           let proxyUser = res.user;
-          if (res.success && !proxyUser) {
-              proxyUser = {
-                  id: res.id,
-                  username: username.trim(),
-                  name: res.name,
-                  email: res.email,
-                  role: res.role,
-                  classId: res.classId, // Might be undefined, which is fine
-                  coordinatorCycleId: res.coordinatorCycleId
-              };
-          }
 
           if (res.success && proxyUser) {
               // 3. MERGE WITH LOCAL STATE: Preservar datos locales (Clase, Coordinación, Usuario simple)
