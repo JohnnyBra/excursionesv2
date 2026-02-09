@@ -73,7 +73,9 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   const dbVersion = useDataSync();
 
   // Get fresh user data to avoid stale classId from localStorage
-  const currentUser = user ? db.getUsers().find(u => u.id === user.id) || user : user;
+  const currentUser = useMemo(() => {
+    return user ? db.getUsers().find(u => u.id === user.id) || user : user;
+  }, [user, dbVersion]);
 
   const [excursions, setExcursions] = useState<Excursion[]>([]);
   const [selectedExcursion, setSelectedExcursion] = useState<Excursion | null>(null);
