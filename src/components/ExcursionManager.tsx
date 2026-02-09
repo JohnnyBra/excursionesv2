@@ -117,7 +117,13 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
 
   // Participants View State
   const [participants, setParticipants] = useState<Participation[]>([]);
-  const [studentsMap, setStudentsMap] = useState<Record<string, Student>>({});
+
+  const studentsMap = useMemo(() => {
+    const students = db.getStudents();
+    const map: Record<string, Student> = {};
+    students.forEach(s => map[s.id] = s);
+    return map;
+  }, [dbVersion]);
 
   // Helper to check if we should show the attendance column
   const [isExcursionDayOrPast, setIsExcursionDayOrPast] = useState(false);
@@ -125,10 +131,6 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
   // EFECTO PRINCIPAL DE CARGA DE DATOS
   useEffect(() => {
     loadData();
-    const students = db.getStudents();
-    const map: Record<string, Student> = {};
-    students.forEach(s => map[s.id] = s);
-    setStudentsMap(map);
     
     if (selectedExcursion) {
         const updatedExcursion = db.getExcursions().find(e => e.id === selectedExcursion.id);
@@ -220,7 +222,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
     });
 
     return result;
-  }, [participants, studentsMap, user, currentUser, classesList]);
+  }, [participants, studentsMap, user, currentUser, classesList, coordinatorMode]);
 
   const loadData = () => {
     const all = db.getExcursions();
