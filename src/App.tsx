@@ -411,10 +411,16 @@ const AppContent = () => {
   );
 };
 
+// -- Main App --
+
+import { ThemeProvider } from './context/ThemeContext';
+
 export default function App() {
   return (
-    <ToastProvider>
-      <AppContent />
-    </ToastProvider>
+    <ThemeProvider defaultTheme="system" storageKey="schooltrip-theme">
+      <ToastProvider>
+        <AppContent />
+      </ToastProvider>
+    </ThemeProvider>
   );
 }
