@@ -7,16 +7,16 @@ import { Calendar, DollarSign, Users, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const StatCard = ({ title, value, icon: Icon, color, onClick }: any) => (
-  <div 
+  <div
     onClick={onClick}
-    className={`bg-white p-6 rounded-xl shadow-sm border border-gray-100 transition-transform hover:scale-105 ${onClick ? 'cursor-pointer hover:shadow-md' : ''}`}
+    className={`glass p-6 rounded-2xl transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${onClick ? 'cursor-pointer' : ''}`}
   >
     <div className="flex justify-between items-start">
       <div>
-        <p className="text-sm font-medium text-gray-500">{title}</p>
-        <h3 className="text-2xl font-bold mt-1">{value}</h3>
+        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
+        <h3 className="text-2xl font-bold mt-1 text-gray-900 dark:text-white font-display">{value}</h3>
       </div>
-      <div className={`p-3 rounded-lg ${color}`}>
+      <div className={`p-3 rounded-xl ${color} shadow-lg shadow-current/20`}>
         <Icon size={24} className="text-white" />
       </div>
     </div>
@@ -37,12 +37,12 @@ export const Dashboard: React.FC = () => {
   const getScopeLabel = (scope: string, targetId?: string) => {
     if (scope === ExcursionScope.GLOBAL) return 'Global (Todo el Centro)';
     if (scope === ExcursionScope.CICLO) {
-        const cycle = db.cycles.find(c => c.id === targetId);
-        return `Ciclo: ${cycle?.name || 'Desconocido'}`;
+      const cycle = db.cycles.find(c => c.id === targetId);
+      return `Ciclo: ${cycle?.name || 'Desconocido'}`;
     }
     if (scope === ExcursionScope.CLASE) {
-        const cls = db.classes.find(c => c.id === targetId);
-        return `Clase: ${cls?.name || 'Desconocida'}`;
+      const cls = db.classes.find(c => c.id === targetId);
+      return `Clase: ${cls?.name || 'Desconocida'}`;
     }
     return scope;
   };
@@ -83,99 +83,113 @@ export const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-8 animate-slide-up pb-safe">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Hola, {user?.name}</h2>
-          <p className="text-gray-500">Aquí tienes el resumen de las excursiones.</p>
+          <h2 className="text-3xl font-bold font-display text-gray-900 dark:text-white">Hola, {user?.name}</h2>
+          <p className="text-gray-500 dark:text-gray-400">Aquí tienes el resumen de las excursiones.</p>
         </div>
-        <div className="text-sm text-gray-500 bg-white px-4 py-2 rounded-lg shadow-sm border">
+        <div className="text-sm font-medium text-gray-500 dark:text-gray-400 glass px-4 py-2 rounded-xl">
           {new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
-          title="Excursiones Activas" 
-          value={relevantExcursions.length} 
-          icon={Calendar} 
-          color="bg-blue-500"
-          onClick={() => navigate('/excursions')} 
+        <StatCard
+          title="Excursiones Activas"
+          value={relevantExcursions.length}
+          icon={Calendar}
+          color="bg-gradient-to-br from-blue-500 to-blue-600"
+          onClick={() => navigate('/excursions')}
         />
-        <StatCard 
-          title="Participantes Totales" 
-          value={participations.filter(p => relevantExcursions.some(e => e.id === p.excursionId)).length} 
-          icon={Users} 
-          color="bg-purple-500" 
+        <StatCard
+          title="Participantes Totales"
+          value={participations.filter(p => relevantExcursions.some(e => e.id === p.excursionId)).length}
+          icon={Users}
+          color="bg-gradient-to-br from-purple-500 to-purple-600"
         />
         {(user?.role === UserRole.DIRECCION || user?.role === UserRole.TESORERIA) && (
           <>
-            <StatCard 
-              title="Recaudado Total" 
-              value={`${totalCollected}€`} 
-              icon={DollarSign} 
-              color="bg-green-500"
-              onClick={() => navigate('/treasury')} 
+            <StatCard
+              title="Recaudado Total"
+              value={`${totalCollected}€`}
+              icon={DollarSign}
+              color="bg-gradient-to-br from-emerald-500 to-emerald-600"
+              onClick={() => navigate('/treasury')}
             />
-            <StatCard 
-              title="Balance Neto" 
-              value={`${totalCollected - totalCost}€`} 
-              icon={TrendingUp} 
-              color={totalCollected - totalCost >= 0 ? "bg-emerald-500" : "bg-red-500"}
-              onClick={() => navigate('/treasury')} 
+            <StatCard
+              title="Balance Neto"
+              value={`${totalCollected - totalCost}€`}
+              icon={TrendingUp}
+              color={totalCollected - totalCost >= 0 ? "bg-gradient-to-br from-teal-500 to-teal-600" : "bg-gradient-to-br from-red-500 to-red-600"}
+              onClick={() => navigate('/treasury')}
             />
           </>
         )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h3 className="text-lg font-bold mb-4">Próximas Salidas</h3>
-          <div className="space-y-4">
-            {relevantExcursions.map(ex => {
+        <div className="glass p-6 rounded-2xl">
+          <h3 className="text-lg font-bold mb-6 font-display text-gray-900 dark:text-white">Próximas Salidas</h3>
+          <div className="space-y-3">
+            {relevantExcursions.map((ex, i) => {
               const isPast = new Date(ex.dateEnd) < new Date();
               return (
-                <div 
-                  key={ex.id} 
+                <div
+                  key={ex.id}
                   onClick={() => handleExcursionClick(ex.id)}
-                  className={`flex items-center gap-4 p-3 hover:bg-blue-50 cursor-pointer rounded-lg transition-colors border-b border-gray-100 last:border-0 group ${isPast ? 'opacity-70' : ''}`}
+                  className={`flex items-center gap-4 p-4 hover:bg-white/50 dark:hover:bg-white/5 cursor-pointer rounded-xl transition-all duration-200 border border-transparent hover:border-gray-100 dark:hover:border-white/5 group ${isPast ? 'opacity-60 grayscale' : ''}`}
+                  style={{ animationDelay: `${i * 0.1}s` }}
                 >
-                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center font-bold shrink-0 transition-colors ${isPast ? 'bg-gray-100 text-gray-400' : 'bg-blue-100 text-blue-600 group-hover:bg-blue-200'}`}>
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold shrink-0 transition-colors shadow-sm ${isPast ? 'bg-gray-100 dark:bg-white/5 text-gray-400' : 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 group-hover:scale-110 duration-300'}`}>
                     {new Date(ex.dateStart).getDate()}
                   </div>
-                  <div className="flex-1">
-                    <h4 className={`font-semibold ${isPast ? 'text-gray-500 line-through decoration-gray-400' : 'text-gray-800 group-hover:text-blue-700'}`}>{ex.title}</h4>
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                       <span>{ex.destination}</span>
-                       <span>•</span>
-                       <span className={`font-medium ${isPast ? 'text-gray-400' : 'text-blue-600'}`}>{getScopeLabel(ex.scope, ex.targetId)}</span>
+                  <div className="flex-1 min-w-0">
+                    <h4 className={`font-bold font-display truncate ${isPast ? 'text-gray-500 line-through decoration-gray-400' : 'text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400'}`}>{ex.title}</h4>
+                    <div className="flex items-center gap-2 text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                      <span className="truncate">{ex.destination}</span>
+                      <span className="opacity-50">•</span>
+                      <span className={`font-medium ${isPast ? 'text-gray-400' : 'text-blue-600 dark:text-blue-400'}`}>{getScopeLabel(ex.scope, ex.targetId)}</span>
                     </div>
                   </div>
-                  <span className={`text-xs px-2 py-1 rounded-full ${isPast ? 'bg-gray-100 text-gray-400' : ex.scope === 'GLOBAL' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
+                  <span className={`text-[10px] uppercase font-bold px-2.5 py-1 rounded-full ${isPast ? 'bg-gray-100 dark:bg-white/5 text-gray-400' : ex.scope === 'GLOBAL' ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300' : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400'}`}>
                     {ex.scope}
                   </span>
                 </div>
               );
             })}
             {relevantExcursions.length === 0 && (
-              <p className="text-gray-400 text-center py-4">No hay excursiones programadas</p>
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-gray-50 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-300 dark:text-gray-600">
+                  <Calendar size={32} />
+                </div>
+                <p className="text-gray-400 dark:text-gray-500 font-medium">No hay excursiones programadas</p>
+              </div>
             )}
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h3 className="text-lg font-bold mb-4">Balance Financiero</h3>
-          <div className="h-64 w-full">
-             <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `${val}€`} />
-                  <Tooltip />
-                  <Bar dataKey="collected" name="Recaudado" fill="#10B981" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="cost" name="Coste" fill="#EF4444" radius={[4, 4, 0, 0]} />
-                </BarChart>
-             </ResponsiveContainer>
+        <div className="glass p-6 rounded-2xl">
+          <h3 className="text-lg font-bold mb-6 font-display text-gray-900 dark:text-white">Balance Financiero</h3>
+          <div className="h-80 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(156, 163, 175, 0.2)" />
+                <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} tick={{ fill: '#9ca3af' }} interval={0} />
+                <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => `${val}€`} tick={{ fill: '#9ca3af' }} />
+                <Tooltip
+                  cursor={{ fill: 'rgba(156, 163, 175, 0.1)' }}
+                  contentStyle={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    borderRadius: '12px',
+                    border: 'none',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                  }}
+                />
+                <Bar dataKey="collected" name="Recaudado" fill="#10B981" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="cost" name="Coste" fill="#EF4444" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </div>
