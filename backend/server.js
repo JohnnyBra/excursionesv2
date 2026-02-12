@@ -367,9 +367,11 @@ const fetchPrismaData = async () => {
         });
 
         // 4. Vincular Tutor a Clase (Bidireccional)
+        const classMap = new Map(classes.map(c => [c.id, c]));
+
         users.forEach(u => {
             if (u.classId) {
-                const cls = classes.find(c => c.id === u.classId);
+                const cls = classMap.get(u.classId);
                 if (cls) cls.tutorId = u.id;
             }
         });
