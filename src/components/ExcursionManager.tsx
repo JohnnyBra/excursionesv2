@@ -34,7 +34,7 @@ const getLogoData = async (url: string): Promise<string> => {
 
 const LOGO_URL = '/logo_documento.png';
 
-const drawPdfHeader = (doc: jsPDF, logoData: string | null) => {
+const drawPdfHeader = (doc: jsPDF, logoData: string | null, showDate: boolean = true) => {
   const pageWidth = doc.internal.pageSize.getWidth();
 
   if (logoData) {
@@ -44,10 +44,12 @@ const drawPdfHeader = (doc: jsPDF, logoData: string | null) => {
   doc.setTextColor(0, 0, 0);
   doc.text("Cooperativa de Enseñanza La Hispanidad", 14, 20);
 
-  doc.setFontSize(10);
-  doc.setTextColor(100, 100, 100);
-  doc.text(new Date().toLocaleString('es-ES'), 14, 26);
-  doc.setTextColor(0, 0, 0);
+  if (showDate) {
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.text(new Date().toLocaleString('es-ES'), 14, 26);
+      doc.setTextColor(0, 0, 0);
+  }
 };
 
 // Helper to extract surname for sorting
@@ -853,44 +855,143 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
     const doc = new jsPDF();
 
     const logoData = await getLogoData(LOGO_URL);
-    drawPdfHeader(doc, logoData);
+    drawPdfHeader(doc, logoData, false);
 
-    // Salutation
-    doc.setFontSize(12);
-    doc.text("Estimadas familias,", 14, 40);
+    // Starting setup
+    let currentY = 60;
+    const margin = 20;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const maxLineWidth = pageWidth - (margin * 2);
+    const lineHeight = 7;
+    const paragraphGap = 4;
 
-    // Body
-    doc.text("Nos ponemos en contacto para informarles de la próxima salida complementaria:", 14, 50);
-
-    doc.setFont("helvetica", "bold");
-    doc.text(`Actividad: ${selectedExcursion.title}`, 14, 60);
+    doc.setFontSize(11);
     doc.setFont("helvetica", "normal");
 
-    doc.text(`Destino: ${selectedExcursion.destination}`, 14, 70);
+    // Helper for printing mixed bold text
+    const printParagraph = (segments: { text: string; bold?: boolean }[]) => {
+      const lines: { text: string; bold?: boolean; width: number }[][] = [];
+      let currentLine: { text: string; bold?: boolean; width: number }[] = [];
+      let currentLineWidth = 0;
 
+      segments.forEach(({ text, bold }) => {
+        doc.setFont("helvetica", bold ? "bold" : "normal");
+
+        // Simple splitting by spaces to handle wrapping
+        const words = text.split(/(\s+)/);
+
+        words.forEach((word) => {
+          if (!word) return;
+          const wordWidth = doc.getTextWidth(word);
+
+          // Check if it fits
+          if (currentLineWidth + wordWidth > maxLineWidth) {
+            // New line needed
+            if (currentLine.length > 0) {
+                // If the word causing overflow is just a space, ignore it on the new line start
+                if (/^\s+$/.test(word)) {
+                     return;
+                }
+
+                lines.push(currentLine);
+                currentLine = [];
+                currentLineWidth = 0;
+            }
+          }
+
+          currentLine.push({ text: word, bold, width: wordWidth });
+          currentLineWidth += wordWidth;
+        });
+      });
+      if (currentLine.length > 0) lines.push(currentLine);
+
+      // Render lines
+      lines.forEach((line) => {
+        let x = margin;
+        line.forEach((segment) => {
+           doc.setFont("helvetica", segment.bold ? "bold" : "normal");
+           doc.text(segment.text, x, currentY);
+           x += segment.width;
+        });
+        currentY += lineHeight;
+      });
+      currentY += paragraphGap;
+    };
+
+    // --- Content Generation ---
+
+    // Salutation
+    printParagraph([{ text: "Estimadas familias," }]);
+
+    // Para 1: Intro
+    printParagraph([
+        { text: "Nos ponemos en contacto con vosotros para informaros sobre la próxima actividad complementaria " },
+        { text: selectedExcursion.title, bold: true },
+        { text: " que realizaremos en " },
+        { text: selectedExcursion.destination, bold: true },
+        { text: "." }
+    ]);
+
+    // Para 2: Date
     const dateStart = new Date(selectedExcursion.dateStart);
     const dateEnd = new Date(selectedExcursion.dateEnd);
 
-    doc.text(`Fecha: ${dateStart.toLocaleDateString('es-ES')}`, 14, 80);
-    doc.text(`Horario: De ${dateStart.toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'})} a ${dateEnd.toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'})}`, 14, 90);
+    printParagraph([
+        { text: "Esta salida tendrá lugar el próximo día " },
+        { text: dateStart.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }), bold: true },
+        { text: "." }
+    ]);
 
-    doc.text(`Transporte: ${selectedExcursion.transport === TransportType.WALKING ? 'Andando' : 'Autobús'}`, 14, 100);
-    doc.text(`Vestimenta: ${getClothingLabel(selectedExcursion.clothing)}`, 14, 110);
+    // Para 3: Time
+    printParagraph([
+        { text: "La salida del centro está prevista a las " },
+        { text: dateStart.toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'}), bold: true },
+        { text: " y el regreso a las " },
+        { text: dateEnd.toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'}), bold: true },
+        { text: "." }
+    ]);
 
-    // Financials
-    doc.setFont("helvetica", "bold");
-    doc.text("Información Económica:", 14, 125);
-    doc.setFont("helvetica", "normal");
+    // Para 4: Transport
+    const transportStr = selectedExcursion.transport === TransportType.WALKING ? "andando" : "en autobús";
+    printParagraph([
+        { text: "El desplazamiento se realizará " },
+        { text: transportStr, bold: true },
+        { text: "." }
+    ]);
 
-    let costText = `Coste total por alumno: ${selectedExcursion.costGlobal}€`;
-    if (selectedExcursion.costEntry > 0) {
-        costText += ` (incluye entrada de ${selectedExcursion.costEntry}€)`;
+    // Para 5: Clothing
+    const clothingMap: Record<string, string> = {
+        [ExcursionClothing.UNIFORM]: "el uniforme del colegio",
+        [ExcursionClothing.PE_KIT]: "el chándal del colegio",
+        [ExcursionClothing.STREET]: "ropa de calle"
+    };
+    const clothingStr = clothingMap[selectedExcursion.clothing] || "ropa adecuada";
+
+    printParagraph([
+        { text: "Para esta actividad, los alumnos deberán acudir con " },
+        { text: clothingStr, bold: true },
+        { text: "." }
+    ]);
+
+    // Para 6: Justification
+    if (selectedExcursion.justification) {
+        printParagraph([{ text: "Justificación pedagógica:" }]);
+        printParagraph([{ text: selectedExcursion.justification }]);
     }
-    doc.text(costText, 14, 135);
+
+    // Para 7: Cost
+    let costMsg = [{ text: "El coste de la actividad es de " }, { text: `${selectedExcursion.costGlobal}€`, bold: true }, { text: " por alumno" }];
+    if (selectedExcursion.costEntry > 0) {
+        costMsg.push({ text: ` (incluye entrada de ${selectedExcursion.costEntry}€)` });
+    }
+    costMsg.push({ text: "." });
+
+    printParagraph(costMsg);
 
     // Closing
-    doc.text("Un cordial saludo,", 14, 150);
-    doc.text("El Equipo Docente / La Dirección", 14, 160);
+    currentY += 10;
+    printParagraph([{ text: "Un cordial saludo," }]);
+    printParagraph([{ text: "El Equipo Docente" }]);
 
     doc.save(`carta_familias_${selectedExcursion.title.replace(/\s+/g, '_')}.pdf`);
   };
