@@ -965,7 +965,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
         [ExcursionClothing.PE_KIT]: "el chándal del colegio",
         [ExcursionClothing.STREET]: "ropa de calle"
     };
-    const clothingStr = clothingMap[selectedExcursion.clothing] || "ropa adecuada";
+    const clothingStr = (selectedExcursion.clothing && clothingMap[selectedExcursion.clothing]) || "ropa adecuada";
 
     printParagraph([
         { text: "Para esta actividad, los alumnos deberán acudir con " },
