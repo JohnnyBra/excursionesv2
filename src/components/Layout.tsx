@@ -1,10 +1,11 @@
 import React from 'react';
 import { useAuth } from '../App';
+import { useTheme } from '../context/ThemeContext';
 import { UserRole } from '../types';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LogOut, LayoutDashboard, Bus, Users,
-  Wallet, Settings, Menu, Globe
+  Wallet, Settings, Menu, Globe, Sun, Moon
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -13,6 +14,7 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout, coordinatorMode, setCoordinatorMode } = useAuth();
+  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
@@ -28,8 +30,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       <div
         onClick={() => handleNav(path)}
         className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 ${isActive
-            ? 'bg-primary-50 dark:bg-primary-500/20 text-primary-700 dark:text-primary-300 font-semibold shadow-sm'
-            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white'
+          ? 'bg-primary-50 dark:bg-primary-500/20 text-primary-700 dark:text-primary-300 font-semibold shadow-sm'
+          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white'
           }`}
       >
         <Icon size={20} className={isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500'} />
@@ -50,9 +52,17 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           />
           <h1 className="font-display font-bold text-sm text-gray-900 dark:text-white">Gestor Excursiones</h1>
         </div>
-        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-gray-600 dark:text-gray-300">
-          <Menu />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="p-2 text-gray-600 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors"
+          >
+            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-gray-600 dark:text-gray-300">
+            <Menu />
+          </button>
+        </div>
       </div>
 
       {/* Sidebar */}
@@ -131,6 +141,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               <p className="text-sm font-bold truncate text-gray-900 dark:text-white">{user?.name}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400 truncate capitalize">{user?.role.toLowerCase()}</p>
             </div>
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-colors"
+              title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
           </div>
           <button
             onClick={logout}
