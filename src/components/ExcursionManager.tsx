@@ -848,6 +848,53 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
       doc.save(`control_asistencia_${selectedExcursion.title.replace(/\s+/g, '_')}.pdf`);
   };
 
+  const generateFamilyLetter = async () => {
+    if (!selectedExcursion) return;
+    const doc = new jsPDF();
+
+    const logoData = await getLogoData(LOGO_URL);
+    drawPdfHeader(doc, logoData);
+
+    // Salutation
+    doc.setFontSize(12);
+    doc.text("Estimadas familias,", 14, 40);
+
+    // Body
+    doc.text("Nos ponemos en contacto para informarles de la próxima salida complementaria:", 14, 50);
+
+    doc.setFont("helvetica", "bold");
+    doc.text(`Actividad: ${selectedExcursion.title}`, 14, 60);
+    doc.setFont("helvetica", "normal");
+
+    doc.text(`Destino: ${selectedExcursion.destination}`, 14, 70);
+
+    const dateStart = new Date(selectedExcursion.dateStart);
+    const dateEnd = new Date(selectedExcursion.dateEnd);
+
+    doc.text(`Fecha: ${dateStart.toLocaleDateString('es-ES')}`, 14, 80);
+    doc.text(`Horario: De ${dateStart.toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'})} a ${dateEnd.toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'})}`, 14, 90);
+
+    doc.text(`Transporte: ${selectedExcursion.transport === TransportType.WALKING ? 'Andando' : 'Autobús'}`, 14, 100);
+    doc.text(`Vestimenta: ${getClothingLabel(selectedExcursion.clothing)}`, 14, 110);
+
+    // Financials
+    doc.setFont("helvetica", "bold");
+    doc.text("Información Económica:", 14, 125);
+    doc.setFont("helvetica", "normal");
+
+    let costText = `Coste total por alumno: ${selectedExcursion.costGlobal}€`;
+    if (selectedExcursion.costEntry > 0) {
+        costText += ` (incluye entrada de ${selectedExcursion.costEntry}€)`;
+    }
+    doc.text(costText, 14, 135);
+
+    // Closing
+    doc.text("Un cordial saludo,", 14, 150);
+    doc.text("El Equipo Docente / La Dirección", 14, 160);
+
+    doc.save(`carta_familias_${selectedExcursion.title.replace(/\s+/g, '_')}.pdf`);
+  };
+
   const handleDateStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const newVal = e.target.value;
       const updates: any = { dateStart: newVal };
@@ -1088,6 +1135,10 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                              <FileSpreadsheet size={18} />
                         </button>
                     )}
+
+                    <button onClick={generateFamilyLetter} className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 shadow-sm text-sm">
+                        <FileText size={18} /> Carta Familias
+                    </button>
 
                     <button onClick={generatePDF} className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 shadow-sm text-sm">
                       <Printer size={18} /> {user?.role === UserRole.TESORERIA ? 'Inf. Econ.' : 'Listado'}
