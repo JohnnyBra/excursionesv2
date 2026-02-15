@@ -1,9 +1,0 @@
-
-> schooltrip-backend@1.0.0 server
-> node server.js
-
-✅ Servidor Todo-en-Uno (HTTP + WebSocket) corriendo en http://localhost:3005
-📁 Base de datos: /app/backend/database.json
-🌍 Sirviendo frontend desde: ../dist
-🔌 Proxy PrismaEdu configurado hacia: http://localhost:3020
-Terminated

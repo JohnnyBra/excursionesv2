@@ -1508,6 +1508,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                         </div>
 
                         {/* Mobile Sticky Actions Footer */}
+                        {(activeTab === 'details' || isEditing) && (
                         <div className="md:hidden glass-nav p-3 flex justify-around items-center absolute bottom-0 w-full z-40">
                              {!isEditing ? (
                                 <>
@@ -1546,6 +1547,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                 </div>
                              )}
                         </div>
+                        )}
                     </>
                 ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-gray-300 w-full">
