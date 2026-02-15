@@ -860,15 +860,31 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
         drawPdfHeader(doc, logoData, false);
 
         // Starting setup
-        let currentY = 60;
+        let currentY = 40;
         const margin = 20;
         const pageWidth = doc.internal.pageSize.getWidth();
         const maxLineWidth = pageWidth - (margin * 2);
-        const lineHeight = 7;
-        const paragraphGap = 4;
+        const lineHeight = 8;
+        const paragraphGap = 5;
 
-        doc.setFontSize(11);
-        doc.setFont("helvetica", "normal");
+        // Separator Line
+        doc.setLineWidth(0.5);
+        doc.line(margin, 32, pageWidth - margin, 32);
+
+        // Date (Right Aligned)
+        const dateStr = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+        doc.setFont("times", "normal");
+        doc.setFontSize(12);
+        doc.text(`Huelva, ${dateStr}`, pageWidth - margin, currentY, { align: 'right' });
+        currentY += 15;
+
+        // Subject (Centered)
+        doc.setFont("times", "bold");
+        doc.text("ASUNTO: INFORMACIÓN SOBRE ACTIVIDAD COMPLEMENTARIA", pageWidth / 2, currentY, { align: 'center' });
+        currentY += 15;
+
+        doc.setFont("times", "normal");
+        doc.setFontSize(12);
 
         // Helper for printing mixed bold text
         const printParagraph = (segments: { text: string; bold?: boolean }[]) => {
@@ -877,7 +893,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
             let currentLineWidth = 0;
 
             segments.forEach(({ text, bold }) => {
-                doc.setFont("helvetica", bold ? "bold" : "normal");
+                doc.setFont("times", bold ? "bold" : "normal");
 
                 // Simple splitting by spaces to handle wrapping
                 const words = text.split(/(\s+)/);
@@ -911,7 +927,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
             lines.forEach((line) => {
                 let x = margin;
                 line.forEach((segment) => {
-                    doc.setFont("helvetica", segment.bold ? "bold" : "normal");
+                    doc.setFont("times", segment.bold ? "bold" : "normal");
                     doc.text(segment.text, x, currentY);
                     x += segment.width;
                 });
@@ -922,13 +938,13 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
 
         // ... Content ...
         // Salutation
-        printParagraph([{ text: "Estimadas familias," }]);
+        printParagraph([{ text: "Estimadas familias:" }]);
 
         // Para 1: Intro
         printParagraph([
-            { text: "Nos ponemos en contacto con vosotros para informaros sobre la próxima actividad complementaria " },
+            { text: "Por la presente, nos dirigimos a ustedes para informarles sobre la actividad complementaria " },
             { text: selectedExcursion.title, bold: true },
-            { text: " que realizaremos en " },
+            { text: ", que se llevará a cabo en " },
             { text: selectedExcursion.destination, bold: true },
             { text: "." }
         ]);
@@ -938,24 +954,24 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
         const dateEnd = new Date(selectedExcursion.dateEnd);
 
         printParagraph([
-            { text: "Esta salida tendrá lugar el próximo día " },
+            { text: "Dicha actividad está programada para el día " },
             { text: dateStart.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }), bold: true },
             { text: "." }
         ]);
 
         // Para 3: Time
         printParagraph([
-            { text: "La salida del centro está prevista a las " },
+            { text: "La salida del centro educativo se efectuará a las " },
             { text: dateStart.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }), bold: true },
-            { text: " y el regreso a las " },
+            { text: ", estimándose el regreso a las " },
             { text: dateEnd.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }), bold: true },
             { text: "." }
         ]);
 
         // Para 4: Transport
-        const transportStr = selectedExcursion.transport === TransportType.WALKING ? "andando" : "en autobús";
+        const transportStr = selectedExcursion.transport === TransportType.WALKING ? "a pie" : "en autobús";
         printParagraph([
-            { text: "El desplazamiento se realizará " },
+            { text: "El traslado hasta el lugar de la actividad se realizará " },
             { text: transportStr, bold: true },
             { text: "." }
         ]);
@@ -969,30 +985,33 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
         const clothingStr = (selectedExcursion.clothing && clothingMap[selectedExcursion.clothing]) || "ropa adecuada";
 
         printParagraph([
-            { text: "Para esta actividad, los alumnos deberán acudir con " },
+            { text: "Se requiere que el alumnado asista con " },
             { text: clothingStr, bold: true },
             { text: "." }
         ]);
 
         // Para 6: Justification
         if (selectedExcursion.justification) {
-            printParagraph([{ text: "Justificación pedagógica:" }]);
+            printParagraph([{ text: "Objetivos pedagógicos:", bold: true }]);
             printParagraph([{ text: selectedExcursion.justification }]);
         }
 
         // Para 7: Cost
-        let costMsg = [{ text: "El coste de la actividad es de " }, { text: `${selectedExcursion.costGlobal}€`, bold: true }, { text: " por alumno" }];
+        let costMsg = [{ text: "El importe de la actividad asciende a " }, { text: `${selectedExcursion.costGlobal}€`, bold: true }, { text: " por alumno" }];
         if (selectedExcursion.costEntry > 0) {
-            costMsg.push({ text: ` (incluye entrada de ${selectedExcursion.costEntry}€)` });
+            costMsg.push({ text: ` (incluyendo la entrada de ${selectedExcursion.costEntry}€)` });
         }
         costMsg.push({ text: "." });
 
         printParagraph(costMsg);
 
         // Closing
+        currentY += 15;
+        printParagraph([{ text: "Sin otro particular, reciban un cordial saludo." }]);
+
         currentY += 10;
-        printParagraph([{ text: "Un cordial saludo," }]);
-        printParagraph([{ text: "El Equipo Docente" }]);
+        printParagraph([{ text: "Atentamente," }]);
+        printParagraph([{ text: "El Equipo Docente", bold: true }]);
 
         doc.save(`carta_familias_${selectedExcursion.title.replace(/\s+/g, '_')}.pdf`);
     };
