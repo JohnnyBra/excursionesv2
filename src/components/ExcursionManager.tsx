@@ -10,7 +10,7 @@ import { useDataSync } from '../hooks/useDataSync';
 import {
     Plus, Save, DollarSign, CheckCircle, MapPin,
     Printer, Calendar, Calculator, FileText, Copy, Trash2, FileSpreadsheet,
-    Share2, Shirt, Footprints, Bus, Clock, ArrowRight, FileBarChart, Edit, X, ArrowLeft
+    Share2, Shirt, Footprints, Bus, Clock, ArrowRight, FileBarChart, Edit, X, ArrowLeft, ChevronDown
 } from 'lucide-react';
 
 interface ExcursionManagerProps {
@@ -86,6 +86,9 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
 
     // Share Modal State
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
+    // Mobile actions toggle
+    const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
 
     // Report Modal State
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -330,6 +333,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
         setParticipants(allParts.filter(p => p.excursionId === ex.id));
         setIsEditing(false);
         setActiveTab(mode === 'treasury' ? 'budget' : 'details');
+        setMobileActionsOpen(false);
     };
 
     const handleDelete = () => {
@@ -1259,7 +1263,52 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                             </div>
                         )}
 
-                        <div className="flex-1 overflow-y-auto p-6 pb-20 md:pb-6">
+                        {/* Mobile Actions Bar (collapsible) */}
+                        <div className="md:hidden border-b border-white/10 bg-gray-50/50 dark:bg-white/5">
+                            {!isEditing ? (
+                                <>
+                                    <div className="flex items-center justify-between px-3 py-1.5">
+                                        <button
+                                            onClick={() => setMobileActionsOpen(!mobileActionsOpen)}
+                                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-500 dark:text-gray-400 hover:bg-white/50 dark:hover:bg-white/10 transition"
+                                        >
+                                            <ChevronDown size={14} className={`transition-transform duration-200 ${mobileActionsOpen ? 'rotate-180' : ''}`} />
+                                            Acciones
+                                        </button>
+                                        <button onClick={() => setIsEditing(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-blue-600 dark:bg-blue-500">
+                                            <Edit size={14} /> {user?.role === UserRole.TESORERIA ? 'Costes' : 'Editar'}
+                                        </button>
+                                    </div>
+                                    {mobileActionsOpen && (
+                                        <div className="flex items-center gap-1.5 px-3 pb-2 overflow-x-auto">
+                                            {(user?.role === UserRole.TUTOR || user?.role === UserRole.DIRECCION) && (
+                                                <button onClick={() => { setIsShareModalOpen(true); setMobileActionsOpen(false); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-700 dark:text-gray-200 bg-white/60 dark:bg-white/10 border border-gray-200 dark:border-white/10 whitespace-nowrap">
+                                                    <Share2 size={14} /> Compartir
+                                                </button>
+                                            )}
+                                            {user?.role === UserRole.TUTOR && selectedExcursion && selectedExcursion.creatorId !== user.id && (
+                                                <button onClick={() => { handleDuplicateToClass(); setMobileActionsOpen(false); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20 whitespace-nowrap">
+                                                    <Copy size={14} /> Duplicar
+                                                </button>
+                                            )}
+                                            <button onClick={() => { generateFamilyLetter(); setMobileActionsOpen(false); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-700 dark:text-gray-200 bg-white/60 dark:bg-white/10 border border-gray-200 dark:border-white/10 whitespace-nowrap">
+                                                <FileText size={14} /> Carta
+                                            </button>
+                                            <button onClick={() => { generatePDF(); setMobileActionsOpen(false); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-700 dark:text-gray-200 bg-white/60 dark:bg-white/10 border border-gray-200 dark:border-white/10 whitespace-nowrap">
+                                                <Printer size={14} /> PDF
+                                            </button>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="flex gap-2 w-full px-3 py-1.5">
+                                    <button onClick={() => { setIsEditing(false); setFormData(selectedExcursion!); }} className="flex-1 py-2 text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-white/10 rounded-lg text-sm font-medium">Cancelar</button>
+                                    <button onClick={handleSave} className="flex-1 py-2 text-white bg-green-600 rounded-lg font-bold text-sm">Guardar</button>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6 pb-6">
                             {(activeTab === 'budget' || (isEditing && user?.role === UserRole.TESORERIA)) && (
                                 <div className="max-w-lg mx-auto bg-blue-50/50 p-6 rounded-xl border border-blue-100 shadow-sm">
                                     <h4 className="font-semibold text-blue-900 mb-6 flex items-center gap-2"><Calculator /> Datos Económicos</h4>
@@ -1507,47 +1556,6 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                             )}
                         </div>
 
-                        {/* Mobile Sticky Actions Footer */}
-                        {(activeTab === 'details' || isEditing) && (
-                        <div className="md:hidden glass-nav p-3 flex justify-around items-center absolute bottom-0 w-full z-40">
-                             {!isEditing ? (
-                                <>
-                                  {(user?.role === UserRole.TUTOR || user?.role === UserRole.DIRECCION) && (
-                                        <button onClick={() => setIsShareModalOpen(true)} className="flex flex-col items-center gap-1 text-gray-600">
-                                            <div className="p-2 bg-white/50 rounded-full"><Share2 size={20} /></div>
-                                            <span className="text-[10px]">Compartir</span>
-                                        </button>
-                                  )}
-
-                                  {/* Duplicate for Mobile (Tutors who didn't create) */}
-                                  {user?.role === UserRole.TUTOR && selectedExcursion.creatorId !== user.id && (
-                                        <button onClick={handleDuplicateToClass} className="flex flex-col items-center gap-1 text-purple-600">
-                                            <div className="p-2 bg-purple-100 rounded-full"><Copy size={20} /></div>
-                                            <span className="text-[10px]">Duplicar</span>
-                                        </button>
-                                  )}
-
-                                  <button onClick={generateFamilyLetter} className="flex flex-col items-center gap-1 text-gray-600">
-                                        <div className="p-2 bg-white/50 rounded-full"><FileText size={20} /></div>
-                                        <span className="text-[10px]">Carta</span>
-                                  </button>
-                                  <button onClick={generatePDF} className="flex flex-col items-center gap-1 text-gray-600">
-                                        <div className="p-2 bg-white/50 rounded-full"><Printer size={20} /></div>
-                                        <span className="text-[10px]">Imprimir</span>
-                                  </button>
-                                  <button onClick={() => setIsEditing(true)} className="flex flex-col items-center gap-1 text-blue-600">
-                                        <div className="p-2 bg-blue-100 rounded-full"><Edit size={20} /></div>
-                                        <span className="text-[10px]">Editar</span>
-                                  </button>
-                                </>
-                             ) : (
-                                <div className="flex gap-2 w-full">
-                                    <button onClick={() => { setIsEditing(false); setFormData(selectedExcursion); }} className="flex-1 py-3 text-gray-600 bg-gray-100 rounded-lg">Cancelar</button>
-                                    <button onClick={handleSave} className="flex-1 py-3 text-white bg-green-600 rounded-lg font-bold">Guardar</button>
-                                </div>
-                             )}
-                        </div>
-                        )}
                     </>
                 ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-gray-300 w-full">
