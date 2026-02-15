@@ -26,7 +26,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     return (
       <div
         onClick={() => handleNav(path)}
-        className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-colors ${isActive ? 'bg-blue-100 text-blue-700' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'}`}
+        className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-colors ${isActive ? 'bg-primary-100/50 text-primary-700 dark:bg-primary-500/20 dark:text-primary-300' : 'text-gray-600 dark:text-gray-300 hover:bg-white/50 dark:hover:bg-white/10'}`}
       >
         <Icon size={20} />
         <span className="font-medium">{label}</span>
@@ -35,9 +35,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col md:flex-row transition-colors duration-300">
+    <div className="min-h-screen flex flex-col md:flex-row transition-colors duration-300">
       {/* Mobile Header (Branding only) */}
-      <div className="md:hidden bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-4 flex justify-center items-center border-b border-gray-200 dark:border-white/10 sticky top-0 z-40 transition-colors duration-300">
+      <div className="md:hidden glass-nav p-4 flex justify-center items-center sticky top-0 z-40">
         <div className="flex items-center gap-2">
             <img src="logo.png" alt="Logo" className="h-8 w-auto" onError={(e) => e.currentTarget.src = 'https://via.placeholder.com/30'} />
             <h1 className="font-bold text-sm text-gray-800 dark:text-gray-100">Gestor Excursiones</h1>
@@ -45,13 +45,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       </div>
 
       {/* Sidebar (Desktop Only) */}
-      <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-white/10 h-screen sticky top-0 transition-colors duration-300">
-        <div className="p-6 flex flex-col items-center text-center border-b border-gray-100 dark:border-white/5">
+      <aside className="hidden md:flex flex-col w-64 glass-light h-screen sticky top-0 transition-colors duration-300">
+        <div className="p-6 flex flex-col items-center text-center border-b border-gray-200/50 dark:border-white/5">
           <img src="logo.png" alt="Logo Hispanidad" className="h-16 w-auto mb-3 object-contain" onError={(e) => e.currentTarget.src = 'https://via.placeholder.com/150?text=LOGO'} />
           <h1 className="text-lg font-bold text-gray-800 dark:text-white leading-tight">
             Gestor de Excursiones
           </h1>
-          <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mt-1">
+          <p className="text-xs text-primary-600 dark:text-primary-400 font-medium mt-1">
             Coop. Enseñanza La Hispanidad
           </p>
         </div>
@@ -71,18 +71,18 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             <NavItem icon={Wallet} label="Tesorería" path="/treasury" />
           )}
 
-          <div className="pt-4 mt-4 border-t border-gray-100 dark:border-white/5">
+          <div className="pt-4 mt-4 border-t border-gray-200/50 dark:border-white/5">
             <NavItem icon={Settings} label="Configuración" path="/settings" />
           </div>
         </nav>
 
-        <div className="p-4 border-t border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/5">
+        <div className="p-4 border-t border-gray-200/50 dark:border-white/5 glass-panel">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold border border-blue-200 dark:border-blue-500/30 shadow-sm">
+            <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-500/20 flex items-center justify-center text-primary-600 dark:text-primary-300 font-bold border border-primary-200 dark:border-primary-500/30 shadow-sm">
               {user?.name.charAt(0)}
             </div>
             <div className="flex-1 overflow-hidden">
-              <p className="text-sm font-medium truncate text-gray-800 dark:text-gray-200">{user?.name}</p>
+              <p className="text-sm font-medium truncate text-gray-800 dark:text-gray-100">{user?.name}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400 truncate capitalize">{user?.role.toLowerCase()}</p>
             </div>
           </div>
@@ -93,7 +93,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             <LogOut size={16} /> Cerrar Sesión
           </button>
 
-          <div className="mt-4 pt-3 border-t border-gray-200 dark:border-white/10 text-center">
+          <div className="mt-4 pt-3 border-t border-gray-200/50 dark:border-white/10 text-center">
             <p className="text-[10px] text-gray-400 dark:text-gray-500 font-semibold tracking-wide uppercase">
               Creado por Javier Barrero
             </p>

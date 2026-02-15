@@ -1461,9 +1461,9 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                             </div>
                                         </div>
 
-                                        <div className="border rounded-lg overflow-hidden">
+                                        <div className="border rounded-lg overflow-hidden border-gray-200 dark:border-white/10">
                                             <table className="min-w-full text-sm">
-                                                <thead className="bg-gray-100 text-gray-600 uppercase text-xs">
+                                                <thead className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 uppercase text-xs">
                                                     <tr>
                                                         <th className="px-4 py-3 text-left">Alumno</th>
                                                         <th className="px-4 py-3 text-center">Auth</th>
