@@ -20,9 +20,9 @@ export const BottomNav = () => {
     return (
       <button
         onClick={() => handleNav(path)}
-        className={`flex flex-col items-center justify-center w-full py-2 transition-all duration-300 ${isActive ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+        className={`flex flex-col items-center justify-center w-full py-2 transition-all duration-300 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
       >
-        <div className={`p-1.5 rounded-2xl transition-all ${isActive ? 'bg-blue-100/50 shadow-inner' : ''}`}>
+        <div className={`p-1.5 rounded-2xl transition-all ${isActive ? 'bg-blue-100/50 dark:bg-blue-500/20 shadow-inner' : ''}`}>
              <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
         </div>
         <span className="text-[10px] font-medium mt-0.5">{label}</span>
