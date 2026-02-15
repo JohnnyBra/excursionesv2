@@ -8,7 +8,8 @@ import { Dashboard } from './components/Dashboard';
 import { ExcursionManager } from './components/ExcursionManager';
 import { UserManager } from './components/UserManager';
 import { ToastProvider, useToast } from './components/ui/Toast';
-import { Lock, User as UserIcon, Save, Loader, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { Lock, User as UserIcon, Save, Loader, ShieldCheck, ArrowLeft, Moon, Sun, Monitor, LogOut } from 'lucide-react';
+import { useTheme } from './context/ThemeContext';
 
 // -- Auth Context --
 interface AuthContextType {
@@ -193,8 +194,9 @@ const Login = () => {
 };
 
 const Settings = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { addToast } = useToast();
+  const { theme, setTheme } = useTheme();
   const [currentPass, setCurrentPass] = useState('');
   const [newPass, setNewPass] = useState('');
 
@@ -219,7 +221,7 @@ const Settings = () => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto glass p-8 rounded-2xl animate-slide-up">
+    <div className="max-w-2xl mx-auto glass p-8 rounded-2xl animate-slide-up pb-24">
       <div className="flex items-center gap-4 mb-8">
         <div className="p-3 bg-primary-100 dark:bg-primary-500/20 text-primary-600 dark:text-primary-400 rounded-xl">
           <ShieldCheck size={28} />
@@ -234,6 +236,34 @@ const Settings = () => {
         <div>
           <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">Nombre Mostrar</label>
           <input type="text" disabled value={user?.name} className="w-full border border-gray-200 dark:border-white/10 p-3 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-500 dark:text-gray-400 font-medium" />
+        </div>
+
+        {/* Theme Section */}
+        <div className="pt-6 border-t border-gray-100 dark:border-white/10">
+          <h3 className="text-lg font-bold font-display text-gray-900 dark:text-white mb-6">Apariencia</h3>
+          <div className="grid grid-cols-3 gap-4">
+             <button
+                onClick={() => setTheme('light')}
+                className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${theme === 'light' ? 'bg-primary-50 border-primary-500 text-primary-700 dark:bg-primary-900/20 dark:border-primary-500/50 dark:text-primary-300' : 'border-gray-200 dark:border-white/10 text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-white/5'}`}
+             >
+                <Sun size={24} />
+                <span className="text-xs font-bold uppercase tracking-wider">Claro</span>
+             </button>
+             <button
+                onClick={() => setTheme('dark')}
+                className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${theme === 'dark' ? 'bg-primary-50 border-primary-500 text-primary-700 dark:bg-primary-900/20 dark:border-primary-500/50 dark:text-primary-300' : 'border-gray-200 dark:border-white/10 text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-white/5'}`}
+             >
+                <Moon size={24} />
+                <span className="text-xs font-bold uppercase tracking-wider">Oscuro</span>
+             </button>
+             <button
+                onClick={() => setTheme('system')}
+                className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${theme === 'system' ? 'bg-primary-50 border-primary-500 text-primary-700 dark:bg-primary-900/20 dark:border-primary-500/50 dark:text-primary-300' : 'border-gray-200 dark:border-white/10 text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-white/5'}`}
+             >
+                <Monitor size={24} />
+                <span className="text-xs font-bold uppercase tracking-wider">Sistema</span>
+             </button>
+          </div>
         </div>
 
         <div className="pt-6 border-t border-gray-100 dark:border-white/10">
@@ -268,6 +298,16 @@ const Settings = () => {
           <button onClick={handleUpdate} className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-xl transition-all font-bold shadow-lg shadow-primary-500/20 active:scale-95">
             <Save size={18} /> Guardar Cambios
           </button>
+        </div>
+
+        {/* Logout Button (Mobile mainly) */}
+        <div className="pt-6 border-t border-gray-100 dark:border-white/10 md:hidden">
+            <button
+                onClick={logout}
+                className="w-full flex items-center justify-center gap-2 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 dark:bg-red-900/10 dark:text-red-400 dark:border-red-900/30 px-6 py-4 rounded-xl transition-all font-bold"
+            >
+                <LogOut size={20} /> Cerrar Sesión
+            </button>
         </div>
       </div>
     </div>
