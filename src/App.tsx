@@ -223,11 +223,11 @@ const Settings = () => {
   return (
     <div className="max-w-2xl mx-auto glass p-8 rounded-2xl animate-slide-up pb-24">
       <div className="flex items-center gap-4 mb-8">
-        <div className="p-3 bg-primary-100 dark:bg-primary-500/20 text-primary-600 dark:text-primary-400 rounded-xl">
+        <div className="p-3 bg-primary-100 dark:bg-primary-500/20 text-primary-600 dark:text-primary-300 rounded-xl">
           <ShieldCheck size={28} />
         </div>
         <div>
-          <h2 className="text-2xl font-bold font-display text-gray-900 dark:text-white">Seguridad y Perfil</h2>
+          <h2 className="text-2xl font-bold font-display text-gray-900 dark:text-gray-100">Seguridad y Perfil</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">Gestiona tu cuenta y contraseña</p>
         </div>
       </div>
@@ -235,12 +235,12 @@ const Settings = () => {
       <div className="space-y-6">
         <div>
           <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ml-1">Nombre Mostrar</label>
-          <input type="text" disabled value={user?.name} className="w-full border border-gray-200 dark:border-white/10 p-3 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-500 dark:text-gray-400 font-medium" />
+          <input type="text" disabled value={user?.name} className="input-field opacity-70 cursor-not-allowed" />
         </div>
 
         {/* Theme Section */}
         <div className="pt-6 border-t border-gray-100 dark:border-white/10">
-          <h3 className="text-lg font-bold font-display text-gray-900 dark:text-white mb-6">Apariencia</h3>
+          <h3 className="text-lg font-bold font-display text-gray-900 dark:text-gray-100 mb-6">Apariencia</h3>
           <div className="grid grid-cols-3 gap-4">
              <button
                 onClick={() => setTheme('light')}
@@ -267,7 +267,7 @@ const Settings = () => {
         </div>
 
         <div className="pt-6 border-t border-gray-100 dark:border-white/10">
-          <h3 className="text-lg font-bold font-display text-gray-900 dark:text-white mb-6">Cambiar Contraseña</h3>
+          <h3 className="text-lg font-bold font-display text-gray-900 dark:text-gray-100 mb-6">Cambiar Contraseña</h3>
 
           <div className="space-y-5">
             <div>
@@ -277,7 +277,7 @@ const Settings = () => {
                 value={currentPass}
                 onChange={(e) => setCurrentPass(e.target.value)}
                 placeholder="Introduce tu contraseña actual..."
-                className="w-full border border-gray-200 dark:border-white/10 p-3 rounded-xl bg-white dark:bg-black/20 focus:ring-2 focus:ring-primary-500 outline-none text-gray-900 dark:text-white transition-all"
+                className="input-field"
               />
             </div>
 
@@ -288,7 +288,7 @@ const Settings = () => {
                 value={newPass}
                 onChange={(e) => setNewPass(e.target.value)}
                 placeholder="Nueva contraseña..."
-                className="w-full border border-gray-200 dark:border-white/10 p-3 rounded-xl bg-white dark:bg-black/20 focus:ring-2 focus:ring-primary-500 outline-none text-gray-900 dark:text-white transition-all"
+                className="input-field"
               />
             </div>
           </div>
