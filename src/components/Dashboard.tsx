@@ -58,7 +58,7 @@ export const Dashboard: React.FC = () => {
       if (e.scope === 'CICLO' && e.targetId === myClass?.cycleId) return true;
     }
     return false;
-  });
+  }).sort((a, b) => new Date(a.dateStart).getTime() - new Date(b.dateStart).getTime());
 
   const totalCollected = relevantExcursions.reduce((acc, exc) => {
     const parts = participations.filter(p => p.excursionId === exc.id && p.paid);
@@ -142,7 +142,7 @@ export const Dashboard: React.FC = () => {
                   style={{ animationDelay: `${i * 0.1}s` }}
                 >
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold shrink-0 transition-colors shadow-sm ${isPast ? 'bg-gray-100 dark:bg-white/5 text-gray-400' : 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 group-hover:scale-110 duration-300'}`}>
-                    {new Date(ex.dateStart).getDate()}
+                    {new Date(ex.dateStart).getDate()}/{new Date(ex.dateStart).getMonth() + 1}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h4 className={`font-bold font-display truncate ${isPast ? 'text-gray-500 line-through decoration-gray-400' : 'text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400'}`}>{ex.title}</h4>
