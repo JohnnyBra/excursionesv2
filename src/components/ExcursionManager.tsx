@@ -1516,7 +1516,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                                     <tr>
                                                         <th className="px-4 py-3 text-left">Alumno</th>
                                                         <th className="px-4 py-3 text-center">Auth</th>
-                                                        <th className="px-4 py-3 text-center">Pago</th>
+                                                        {(selectedExcursion?.costGlobal ?? 0) > 0 && <th className="px-4 py-3 text-center">Pago</th>}
                                                         {isExcursionDayOrPast && <th className="px-4 py-3 text-center bg-green-50 text-green-700">Asistencia Real</th>}
                                                     </tr>
                                                 </thead>
@@ -1532,9 +1532,11 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                                                 <td className={`px-4 py-3 text-center ${isEditable ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`} onClick={() => isEditable && toggleParticipationStatus(p, 'authSigned')}>
                                                                     <div className={`w-8 h-8 mx-auto flex items-center justify-center rounded-full ${p.authSigned ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-300'}`}><FileText size={16} /></div>
                                                                 </td>
+                                                                {(selectedExcursion?.costGlobal ?? 0) > 0 && (
                                                                 <td className={`px-4 py-3 text-center ${isEditable ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`} onClick={() => isEditable && toggleParticipationStatus(p, 'paid')}>
                                                                     <div className={`w-8 h-8 mx-auto flex items-center justify-center rounded-full ${p.paid ? 'bg-green-100 text-green-600' : 'bg-red-50 text-red-300'}`}><DollarSign size={16} /></div>
                                                                 </td>
+                                                                )}
                                                                 {isExcursionDayOrPast && (
                                                                     <td className={`px-4 py-3 text-center bg-green-50/50 ${isEditable ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`} onClick={() => isEditable && toggleParticipationStatus(p, 'attended')}>
                                                                         {p.attended ? <CheckCircle size={20} className="text-green-500 mx-auto" /> : <div className="w-5 h-5 rounded-full border-2 border-gray-300 mx-auto"></div>}

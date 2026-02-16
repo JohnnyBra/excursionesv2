@@ -62,6 +62,13 @@ Shared TypeScript interfaces and enums: `UserRole` (DIRECCION, TUTOR, TESORERIA,
 - **COORDINACION** (Coordinator): Cycle-level access
 - **ADMIN**: Full access
 
+### Participation Table (`ExcursionManager.tsx`)
+
+The participation table shows columns conditionally based on excursion state:
+- **Auth** (authorization): Always visible.
+- **Pago** (payment): Only visible when `excursion.costGlobal > 0`. Hidden for free excursions.
+- **Asistencia Real** (attendance): Only visible on or after the excursion date (`isExcursionDayOrPast`).
+
 ### Dev Server Proxy
 
 Vite proxies `/api/*` requests to `http://localhost:3005` during development (configured in `vite.config.ts`).
