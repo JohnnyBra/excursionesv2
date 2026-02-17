@@ -230,7 +230,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
 
     const loadData = () => {
         const all = db.getExcursions();
-        let visible = all;
+        let visible = [...all];
 
         if (user?.role === UserRole.TUTOR) {
             if (coordinatorMode && user.coordinatorCycleId) {
@@ -249,6 +249,8 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                 );
             }
         }
+
+        visible.sort((a, b) => new Date(a.dateStart).getTime() - new Date(b.dateStart).getTime());
 
         setExcursions(visible);
         setCyclesList(db.getCycles());
