@@ -30,7 +30,7 @@ app.set('socketio', io);
 
 io.on('connection', (socket) => {
   console.log('Cliente conectado:', socket.id);
-  
+
   socket.on('disconnect', () => {
     console.log('Cliente desconectado:', socket.id);
   });
@@ -111,6 +111,8 @@ app.get('/api/db', (req, res) => {
 app.post('/api/sync/:entity', async (req, res) => {
   const { entity } = req.params; // users, students, etc.
   const item = req.body;
+  const sourceSocketId = req.headers['x-socket-id']; // Get sender socket ID
+
   const db = readDb();
 
   if (!db[entity]) db[entity] = [];
@@ -123,10 +125,10 @@ app.post('/api/sync/:entity', async (req, res) => {
   }
 
   await writeDb(db);
-  
+
   // EMITIR EVENTO SOCKET
-  io.emit('db_update', { entity, action: 'update' });
-  
+  io.emit('db_update', { entity, action: 'update', sourceSocketId });
+
   res.json({ success: true });
 });
 
@@ -134,6 +136,7 @@ app.post('/api/sync/:entity', async (req, res) => {
 app.post('/api/sync/:entity/bulk', async (req, res) => {
   const { entity } = req.params;
   const items = req.body;
+  const sourceSocketId = req.headers['x-socket-id'];
 
   if (!Array.isArray(items)) {
     return res.status(400).json({ error: "Body must be an array" });
@@ -155,7 +158,7 @@ app.post('/api/sync/:entity/bulk', async (req, res) => {
   await writeDb(db);
 
   // EMITIR EVENTO SOCKET (Solo uno para todo el lote)
-  io.emit('db_update', { entity, action: 'bulk_update', count: items.length });
+  io.emit('db_update', { entity, action: 'bulk_update', count: items.length, sourceSocketId });
 
   res.json({ success: true, count: items.length });
 });
@@ -163,14 +166,15 @@ app.post('/api/sync/:entity/bulk', async (req, res) => {
 // 3. Borrar entidad
 app.delete('/api/sync/:entity/:id', async (req, res) => {
   const { entity, id } = req.params;
+  const sourceSocketId = req.headers['x-socket-id'];
   const db = readDb();
 
   if (db[entity]) {
     db[entity] = db[entity].filter(x => x.id !== id);
     await writeDb(db);
-    
+
     // EMITIR EVENTO SOCKET
-    io.emit('db_update', { entity, action: 'delete', id });
+    io.emit('db_update', { entity, action: 'delete', id, sourceSocketId });
   }
   res.json({ success: true });
 });
@@ -178,12 +182,13 @@ app.delete('/api/sync/:entity/:id', async (req, res) => {
 // 4. Restaurar Backup Completo
 app.post('/api/restore', async (req, res) => {
   const fullData = req.body;
-  if(fullData.users && fullData.excursions) {
+  if (fullData.users && fullData.excursions) {
     await writeDb(fullData);
-    
+
     // EMITIR EVENTO SOCKET (Full reload)
-    io.emit('db_update', { entity: 'all', action: 'restore' });
-    
+    const sourceSocketId = req.headers['x-socket-id'];
+    io.emit('db_update', { entity: 'all', action: 'restore', sourceSocketId });
+
     res.json({ success: true });
   } else {
     res.status(400).json({ error: "Formato inválido" });
@@ -193,8 +198,8 @@ app.post('/api/restore', async (req, res) => {
 // --- PROXY ENDPOINTS (PRISMA EDU) ---
 
 const prismaHeaders = {
-    'api_secret': API_SECRET,
-    'Content-Type': 'application/json'
+  'api_secret': API_SECRET,
+  'Content-Type': 'application/json'
 };
 
 // Login Proxy (Manual)
@@ -297,168 +302,169 @@ app.get('/api/proxy/students', async (req, res) => {
 // --- IMPORTACIÓN Y SINCRONIZACIÓN ---
 
 const fetchPrismaData = async () => {
-    try {
-        console.log("⬇️ Iniciando importación desde PrismaEdu...");
-        const [classesRes, studentsRes, usersRes] = await Promise.all([
-            axios.get(`${PRISMA_URL}/api/export/classes`, { headers: prismaHeaders }),
-            axios.get(`${PRISMA_URL}/api/export/students`, { headers: prismaHeaders }),
-            axios.get(`${PRISMA_URL}/api/export/users`, { headers: prismaHeaders })
-        ]);
+  try {
+    console.log("⬇️ Iniciando importación desde PrismaEdu...");
+    const [classesRes, studentsRes, usersRes] = await Promise.all([
+      axios.get(`${PRISMA_URL}/api/export/classes`, { headers: prismaHeaders }),
+      axios.get(`${PRISMA_URL}/api/export/students`, { headers: prismaHeaders }),
+      axios.get(`${PRISMA_URL}/api/export/users`, { headers: prismaHeaders })
+    ]);
 
-        // 1. Procesar Clases y Ciclos
-        const rawClasses = classesRes.data || [];
-        const cycleMap = new Map();
+    // 1. Procesar Clases y Ciclos
+    const rawClasses = classesRes.data || [];
+    const cycleMap = new Map();
 
-        const classes = rawClasses.map(c => {
-            const cycleId = `${c.stage}-${c.cycle}`.replace(/\s+/g, '-').toLowerCase();
+    const classes = rawClasses.map(c => {
+      const cycleId = `${c.stage}-${c.cycle}`.replace(/\s+/g, '-').toLowerCase();
 
-            // Generar Ciclo si no existe
-            if (!cycleMap.has(cycleId)) {
-                cycleMap.set(cycleId, {
-                    id: cycleId,
-                    name: `${c.stage} - ${c.cycle}`
-                });
-            }
-
-            return {
-                id: c.id,
-                name: c.name,
-                stage: c.stage,
-                cycle: c.cycle,
-                level: c.level,
-                cycleId: cycleId,
-                tutorId: '' // Se rellenará al procesar usuarios
-            };
+      // Generar Ciclo si no existe
+      if (!cycleMap.has(cycleId)) {
+        cycleMap.set(cycleId, {
+          id: cycleId,
+          name: `${c.stage} - ${c.cycle}`
         });
+      }
 
-        const cycles = Array.from(cycleMap.values());
+      return {
+        id: c.id,
+        name: c.name,
+        stage: c.stage,
+        cycle: c.cycle,
+        level: c.level,
+        cycleId: cycleId,
+        tutorId: '' // Se rellenará al procesar usuarios
+      };
+    });
 
-        // 2. Procesar Alumnos
-        const rawStudents = studentsRes.data || [];
-        const students = rawStudents.map(s => ({
-            id: s.id,
-            name: s.name,
-            email: s.email,
-            classId: s.classId,
-            familyId: s.familyId
-        }));
+    const cycles = Array.from(cycleMap.values());
 
-        // 3. Procesar Usuarios (Profesores)
-        const rawUsers = usersRes.data || [];
-        const users = rawUsers.map(u => {
-            let role = u.role || 'TUTOR';
-            const username = u.username || u.email.split('@')[0];
+    // 2. Procesar Alumnos
+    const rawStudents = studentsRes.data || [];
+    const students = rawStudents.map(s => ({
+      id: s.id,
+      name: s.name,
+      email: s.email,
+      classId: s.classId,
+      familyId: s.familyId
+    }));
 
-            // Fix: Detectar Tesorería por nombre de usuario
-            if (username.toLowerCase().includes('tesoreria')) {
-                role = 'TESORERIA';
-            }
+    // 3. Procesar Usuarios (Profesores)
+    const rawUsers = usersRes.data || [];
+    const users = rawUsers.map(u => {
+      let role = u.role || 'TUTOR';
+      const username = u.username || u.email.split('@')[0];
 
-            return {
-                id: u.id,
-                name: u.name,
-                email: u.email,
-                classId: u.classId,
-                role: role,
-                username: username,
-                password: '', // Sin contraseña desde export
-                coordinatorCycleId: u.coordinatorCycleId
-            };
-        });
+      // Fix: Detectar Tesorería por nombre de usuario
+      if (username.toLowerCase().includes('tesoreria')) {
+        role = 'TESORERIA';
+      }
 
-        // 4. Vincular Tutor a Clase (Bidireccional)
-        users.forEach(u => {
-            if (u.classId) {
-                const cls = classes.find(c => c.id === u.classId);
-                if (cls) cls.tutorId = u.id;
-            }
-        });
+      return {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        classId: u.classId,
+        role: role,
+        username: username,
+        password: '', // Sin contraseña desde export
+        coordinatorCycleId: u.coordinatorCycleId
+      };
+    });
 
-        console.log(`✅ Datos obtenidos: ${users.length} usuarios, ${classes.length} clases, ${students.length} alumnos.`);
-        return { users, classes, students, cycles };
+    // 4. Vincular Tutor a Clase (Bidireccional)
+    users.forEach(u => {
+      if (u.classId) {
+        const cls = classes.find(c => c.id === u.classId);
+        if (cls) cls.tutorId = u.id;
+      }
+    });
 
-    } catch (error) {
-        console.error("❌ Error en fetchPrismaData:", error.message);
-        if (error.response) {
-            throw { status: error.response.status, message: error.response.data };
-        }
-        throw { status: 500, message: "Error conectando con PrismaEdu" };
+    console.log(`✅ Datos obtenidos: ${users.length} usuarios, ${classes.length} clases, ${students.length} alumnos.`);
+    return { users, classes, students, cycles };
+
+  } catch (error) {
+    console.error("❌ Error en fetchPrismaData:", error.message);
+    if (error.response) {
+      throw { status: error.response.status, message: error.response.data };
     }
+    throw { status: 500, message: "Error conectando con PrismaEdu" };
+  }
 };
 
 app.post('/api/import/prisma', async (req, res) => {
-    try {
-        const prismaData = await fetchPrismaData();
-        const currentDb = readDb();
+  try {
+    const prismaData = await fetchPrismaData();
+    const currentDb = readDb();
 
-        // A) Ciclos
-        const cycleMap = new Map(currentDb.cycles.map(c => [c.id, c]));
-        prismaData.cycles.forEach(pc => {
-            if (!cycleMap.has(pc.id)) {
-                cycleMap.set(pc.id, pc);
-            }
-        });
-        const mergedCycles = Array.from(cycleMap.values());
+    // A) Ciclos
+    const cycleMap = new Map(currentDb.cycles.map(c => [c.id, c]));
+    prismaData.cycles.forEach(pc => {
+      if (!cycleMap.has(pc.id)) {
+        cycleMap.set(pc.id, pc);
+      }
+    });
+    const mergedCycles = Array.from(cycleMap.values());
 
-        // B) Clases
-        const classMap = new Map(currentDb.classes.map(c => [c.id, c]));
-        prismaData.classes.forEach(pc => {
-            const existing = classMap.get(pc.id);
-            if (existing) {
-                classMap.set(pc.id, { ...existing, ...pc });
-            } else {
-                classMap.set(pc.id, pc);
-            }
-        });
-        const mergedClasses = Array.from(classMap.values());
+    // B) Clases
+    const classMap = new Map(currentDb.classes.map(c => [c.id, c]));
+    prismaData.classes.forEach(pc => {
+      const existing = classMap.get(pc.id);
+      if (existing) {
+        classMap.set(pc.id, { ...existing, ...pc });
+      } else {
+        classMap.set(pc.id, pc);
+      }
+    });
+    const mergedClasses = Array.from(classMap.values());
 
-        // C) Usuarios
-        const userMap = new Map(currentDb.users.map(u => [u.id, u]));
-        prismaData.users.forEach(pu => {
-            const existing = userMap.get(pu.id);
-            if (existing) {
-                if (!existing.password) {
-                     userMap.set(pu.id, pu);
-                }
-            } else {
-                userMap.set(pu.id, pu);
-            }
-        });
-        const mergedUsers = Array.from(userMap.values());
+    // C) Usuarios
+    const userMap = new Map(currentDb.users.map(u => [u.id, u]));
+    prismaData.users.forEach(pu => {
+      const existing = userMap.get(pu.id);
+      if (existing) {
+        if (!existing.password) {
+          userMap.set(pu.id, pu);
+        }
+      } else {
+        userMap.set(pu.id, pu);
+      }
+    });
+    const mergedUsers = Array.from(userMap.values());
 
-        // D) Alumnos
-        const studentMap = new Map(currentDb.students.map(s => [s.id, s]));
-        prismaData.students.forEach(ps => {
-            studentMap.set(ps.id, ps);
-        });
-        const mergedStudents = Array.from(studentMap.values());
+    // D) Alumnos
+    const studentMap = new Map(currentDb.students.map(s => [s.id, s]));
+    prismaData.students.forEach(ps => {
+      studentMap.set(ps.id, ps);
+    });
+    const mergedStudents = Array.from(studentMap.values());
 
-        const newDb = {
-            ...currentDb,
-            cycles: mergedCycles,
-            classes: mergedClasses,
-            users: mergedUsers,
-            students: mergedStudents
-        };
+    const newDb = {
+      ...currentDb,
+      cycles: mergedCycles,
+      classes: mergedClasses,
+      users: mergedUsers,
+      students: mergedStudents
+    };
 
-        await writeDb(newDb);
-        io.emit('db_update', { entity: 'all', action: 'import' });
+    await writeDb(newDb);
+    const sourceSocketId = req.headers['x-socket-id'];
+    io.emit('db_update', { entity: 'all', action: 'import', sourceSocketId });
 
-        res.json({
-            success: true,
-            message: "Importación completada con éxito",
-            stats: {
-                users: mergedUsers.length,
-                classes: mergedClasses.length,
-                students: mergedStudents.length
-            },
-            data: prismaData
-        });
+    res.json({
+      success: true,
+      message: "Importación completada con éxito",
+      stats: {
+        users: mergedUsers.length,
+        classes: mergedClasses.length,
+        students: mergedStudents.length
+      },
+      data: prismaData
+    });
 
-    } catch (error) {
-        const status = error.status || 500;
-        res.status(status).json({ error: error.message || "Error interno en importación" });
-    }
+  } catch (error) {
+    const status = error.status || 500;
+    res.status(status).json({ error: error.message || "Error interno en importación" });
+  }
 });
 
 
@@ -468,7 +474,7 @@ app.get('/', (req, res) => {
 });
 
 app.get(/^\/(.*)/, (req, res) => {
-    res.sendFile(path.join(__dirname, '../dist/index.html'));
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
 // USAR httpServer EN LUGAR DE app.listen
