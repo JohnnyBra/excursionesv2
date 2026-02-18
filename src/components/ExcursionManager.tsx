@@ -708,6 +708,23 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
             return stA.name.localeCompare(stB.name);
         });
 
+        // Calculate Stats for Header
+        const totalAttended = reportParticipants.filter(p => p.attended).length;
+        const notAttendedNoAuth = reportParticipants.filter(p => !p.attended && !p.authSigned).length;
+        const attendedNoAuth = reportParticipants.filter(p => p.attended && !p.authSigned).length;
+
+        // Print Stats
+        const startX = 130;
+        doc.setFontSize(9);
+        doc.text(`Total asisten: ${totalAttended}`, startX, 36);
+        doc.text(`No asisten (sin aut.): ${notAttendedNoAuth}`, startX, 41);
+
+        if (attendedNoAuth > 0) {
+            doc.setTextColor(200, 0, 0);
+            doc.text(`Asisten sin aut.: ${attendedNoAuth}`, startX, 46);
+            doc.setTextColor(0, 0, 0);
+        }
+
         const tableData = reportParticipants.map(p => [
             studentsMap[p.studentId]?.name || 'Unknown',
             p.authSigned ? 'SÍ' : 'NO',
