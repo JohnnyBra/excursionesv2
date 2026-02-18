@@ -679,8 +679,13 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
         const logoData = await getLogoData(LOGO_URL);
         drawPdfHeader(doc, logoData);
 
+        const className = classesList.find(c => c.id === currentUser?.classId)?.name || 'Sin Clase';
+        const dateStr = new Date(selectedExcursion.dateStart).toLocaleDateString();
+
         doc.setFontSize(12);
-        doc.text(`Lista: ${selectedExcursion.title}`, 40, 35);
+        doc.text(`Excursión: ${selectedExcursion.title}`, 14, 35);
+        doc.setFontSize(10);
+        doc.text(`Clase: ${className}   -   Fecha: ${dateStr}`, 14, 42);
 
         // Filter for current tutor's class and Sort
         let reportParticipants = [...participants];
