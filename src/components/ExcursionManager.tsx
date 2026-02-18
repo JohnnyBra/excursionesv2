@@ -714,6 +714,14 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
             startY: 50,
             head: [['Alumno', 'Autorización', 'Pagado', 'Asistencia']],
             body: tableData,
+            didParseCell: (data) => {
+                if (data.section === 'body' && data.column.index === 0) {
+                    const p = reportParticipants[data.row.index];
+                    if (p && isExcursionDayOrPast && p.attended) {
+                        data.cell.styles.fontStyle = 'bold';
+                    }
+                }
+            }
         });
         doc.save(`lista_${selectedExcursion.title}.pdf`);
     };
