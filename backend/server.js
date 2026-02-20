@@ -8,6 +8,7 @@ const { Server } = require('socket.io'); // Importar Socket.io
 const axios = require('axios'); // Importar Axios
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
+require('dotenv').config();
 
 const app = express();
 const PORT = 3005;
@@ -287,6 +288,38 @@ app.post('/api/proxy/login', async (req, res) => {
     } else {
       res.status(500).json({ error: 'Error de conexión con PrismaEdu' });
     }
+  }
+});
+
+// Endpoint to check SSO token
+app.get('/api/proxy/me', (req, res) => {
+  const token = req.cookies.BIBLIO_SSO_TOKEN;
+  if (!token) return res.status(401).json({ success: false, message: 'No SSO session' });
+  try {
+    const JWT_SSO_SECRET = process.env.JWT_SSO_SECRET || 'fallback-secret';
+    const decoded = jwt.verify(token, JWT_SSO_SECRET);
+
+    // Fill "name" and other details from dbCache
+    const db = readDb();
+    const cleanEmail = (decoded.email || decoded.userId || '').toLowerCase();
+
+    const localUser = db.users.find(u =>
+      u.id === decoded.userId ||
+      (u.email && u.email.toLowerCase() === cleanEmail) ||
+      (u.username && u.username.toLowerCase() === cleanEmail)
+    );
+
+    if (localUser) {
+      return res.json({ success: true, user: localUser });
+    }
+
+    // Retornamos raw token info si no hay local match
+    return res.json({
+      success: true,
+      user: { id: decoded.userId, username: decoded.userId, name: decoded.userId, email: decoded.email, role: decoded.role }
+    });
+  } catch (err) {
+    return res.status(401).json({ success: false, message: 'Invalid token' });
   }
 });
 
