@@ -6,6 +6,8 @@ const bodyParser = require('body-parser');
 const http = require('http'); // Importar HTTP nativo
 const { Server } = require('socket.io'); // Importar Socket.io
 const axios = require('axios'); // Importar Axios
+const cookieParser = require('cookie-parser');
+const jwt = require('jsonwebtoken');
 
 const app = express();
 const PORT = 3005;
@@ -40,6 +42,40 @@ io.on('connection', (socket) => {
 app.use(cors());
 app.use(bodyParser.json({ limit: '50mb' }));
 app.set('trust proxy', 1); // Confía en el primer proxy (Cloudflare)
+app.use(cookieParser());
+
+const JWT_SSO_SECRET = process.env.JWT_SSO_SECRET || 'fallback-secret';
+
+const globalAuthMiddleware = async (req, res, next) => {
+  if (process.env.ENABLE_GLOBAL_SSO !== 'true') return next();
+
+  if (req.path.startsWith('/api/proxy/login') || req.path.startsWith('/assets') || req.path === '/favicon.ico') {
+    return next();
+  }
+
+  const token = req.cookies.BIBLIO_SSO_TOKEN;
+  if (!token) return next();
+
+  try {
+    const decoded = jwt.verify(token, JWT_SSO_SECRET);
+    if (decoded.role === 'FAMILY' || decoded.role === 'STUDENT') {
+      if (req.path.startsWith('/api/')) {
+        return res.status(403).json({ success: false, message: 'Acceso denegado a satélites para este rol.' });
+      }
+      return res.redirect('https://prisma.bibliohispa.es');
+    }
+
+    if (decoded.role === 'TEACHER' || decoded.role === 'ADMIN') {
+      req.ssoUser = decoded;
+      return next();
+    }
+    return next();
+  } catch (err) {
+    return next();
+  }
+};
+
+app.use(globalAuthMiddleware);
 
 // --- SERVIR FRONTEND ESTÁTICO ---
 app.use(express.static(path.join(__dirname, '../dist')));
