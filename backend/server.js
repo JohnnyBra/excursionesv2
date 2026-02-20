@@ -254,6 +254,12 @@ app.post('/api/proxy/login', async (req, res) => {
     console.log(`✅ Proxy Login éxito para ${username}:`, response.data);
 
     let data = response.data;
+
+    // Si Prisma envía cookies (como BIBLIO_SSO_TOKEN), retransmitírselas al cliente de Excursiones
+    if (response.headers && response.headers['set-cookie']) {
+      res.setHeader('set-cookie', response.headers['set-cookie']);
+    }
+
     // Fix: Normalize response if it's flat
     if (data.success && !data.user) {
       const { id, name, email, role, classId, coordinatorCycleId } = data;
