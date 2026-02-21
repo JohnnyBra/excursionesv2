@@ -8,7 +8,7 @@ import { Dashboard } from './components/Dashboard';
 import { ExcursionManager } from './components/ExcursionManager';
 import { UserManager } from './components/UserManager';
 import { ToastProvider, useToast } from './components/ui/Toast';
-import { Lock, User as UserIcon, Save, Loader, ShieldCheck, ArrowLeft, Moon, Sun, Monitor, LogOut } from 'lucide-react';
+import { Lock, User as UserIcon, Save, Loader, ShieldCheck, LayoutGrid, Moon, Sun, Monitor, LogOut } from 'lucide-react';
 import { useTheme } from './context/ThemeContext';
 
 // -- Auth Context --
@@ -92,9 +92,11 @@ const Login = () => {
       <div className="absolute top-[-10%] left-[-5%] w-[40vw] h-[40vw] max-w-[500px] max-h-[500px] rounded-full bg-primary-500/10 blur-3xl animate-float pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-5%] w-[35vw] h-[35vw] max-w-[400px] max-h-[400px] rounded-full bg-accent-500/10 blur-3xl animate-float pointer-events-none" />
 
-      <a href="https://prisma.bibliohispa.es/" className="absolute top-6 left-6 text-gray-600 hover:text-gray-900 dark:text-white/70 dark:hover:text-white transition flex items-center gap-2 font-medium z-20 glass px-4 py-2 rounded-full text-sm">
-        <ArrowLeft size={16} />
-        <span className="hidden md:inline">Volver a Prisma</span>
+      <a href="https://prisma.bibliohispa.es"
+         className="absolute top-6 left-6 flex items-center gap-2 p-2 md:px-4 md:py-2 glass rounded-lg md:rounded-xl transition-all duration-200 font-semibold text-xs md:text-sm text-gray-600 dark:text-gray-300 hover:bg-white/80 dark:hover:bg-white/20 hover:scale-[1.02] z-20"
+         title="Ir al Portal Prisma">
+        <LayoutGrid className="h-4 w-4" />
+        <span className="hidden lg:inline">Prisma</span>
       </a>
 
       <div className="glass-medium p-8 rounded-3xl shadow-glass-lg w-full max-w-md animate-scale-in relative z-10 mx-4">

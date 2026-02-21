@@ -4,7 +4,7 @@ import { UserRole } from '../types';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LogOut, LayoutDashboard, Bus, Users,
-  Wallet, Settings
+  Wallet, Settings, LayoutGrid
 } from 'lucide-react';
 import { BottomNav } from './BottomNav';
 
@@ -37,11 +37,17 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col md:flex-row transition-colors duration-300">
       {/* Mobile Header (Branding only) */}
-      <div className="md:hidden bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-4 flex justify-center items-center border-b border-gray-200 dark:border-white/10 sticky top-0 z-40 transition-colors duration-300">
+      <div className="md:hidden bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-4 flex justify-between items-center border-b border-gray-200 dark:border-white/10 sticky top-0 z-40 transition-colors duration-300">
+        <a href="https://prisma.bibliohispa.es"
+           className="flex items-center gap-2 p-2 bg-white/60 dark:bg-white/10 backdrop-blur rounded-lg transition-all duration-200 font-semibold text-xs text-gray-600 dark:text-gray-300 hover:bg-white/80 dark:hover:bg-white/20 hover:scale-[1.02]"
+           title="Ir al Portal Prisma">
+          <LayoutGrid className="h-4 w-4" />
+        </a>
         <div className="flex items-center gap-2">
             <img src="logo.png" alt="Logo" className="h-8 w-auto" onError={(e) => e.currentTarget.src = 'https://via.placeholder.com/30'} />
             <h1 className="font-bold text-sm text-gray-800 dark:text-gray-100">Gestor Excursiones</h1>
         </div>
+        <div className="w-8" />
       </div>
 
       {/* Sidebar (Desktop Only) */}
@@ -73,6 +79,15 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
           <div className="pt-4 mt-4 border-t border-gray-100 dark:border-white/5">
             <NavItem icon={Settings} label="Configuración" path="/settings" />
+          </div>
+
+          <div className="pt-4 mt-4 border-t border-gray-100 dark:border-white/5">
+            <a href="https://prisma.bibliohispa.es"
+               className="flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-colors text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 font-medium"
+               title="Ir al Portal Prisma">
+              <LayoutGrid size={20} />
+              <span>Prisma</span>
+            </a>
           </div>
         </nav>
 
