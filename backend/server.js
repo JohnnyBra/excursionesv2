@@ -8,7 +8,7 @@ const { Server } = require('socket.io'); // Importar Socket.io
 const axios = require('axios'); // Importar Axios
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 const PORT = 3005;
