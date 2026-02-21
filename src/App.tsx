@@ -453,6 +453,7 @@ const AppContent = () => {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('auth_user');
+    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
   };
 
   if (loading) {
