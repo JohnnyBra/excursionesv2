@@ -4,14 +4,15 @@
 /* ============ ROOT VARIABLES ============ */
 :root {
     /* Default (Light Mode) */
-    --bg-app: #f8fafc;
+    --bg-app: #f0f0ff;
     /* surface-50 */
     --bg-card: rgba(255, 255, 255, 0.7);
     --text-main: #0f172a;
     /* surface-900 */
     --text-muted: #64748b;
     /* surface-500 */
-    --glass-border: rgba(255, 255, 255, 0.5); /* Strengthened for visibility */
+    --glass-border: rgba(255, 255, 255, 0.5);
+    /* Strengthened for visibility */
     --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
 
     --glass-bg: rgba(255, 255, 255, 0.6);
@@ -175,7 +176,8 @@ body {
     width: 100%;
     padding: 0.75rem 1rem;
     border-radius: 0.75rem;
-    background-color: #ffffff; /* Light mode default */
+    background-color: #ffffff;
+    /* Light mode default */
     border: 1px solid #e2e8f0;
     color: #0f172a;
     outline: none;
@@ -221,4 +223,27 @@ select.input-field {
 
 .dark select.input-field {
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+}
+
+/* ============ WATERMARK LOGO ============ */
+body::after {
+    content: "";
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80vmin;
+    height: 80vmin;
+    background-image: url('/logo.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    opacity: 0.05;
+    pointer-events: none;
+    z-index: -1;
+}
+
+.dark body::after {
+    opacity: 0.03;
+    filter: grayscale(1) invert(1) brightness(2);
 }
