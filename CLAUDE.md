@@ -54,6 +54,16 @@ No external state library. Uses a hybrid approach:
 
 Shared TypeScript interfaces and enums: `UserRole` (DIRECCION, TUTOR, TESORERIA, COORDINACION, ADMIN), `ExcursionScope` (GLOBAL, CICLO, CLASE), `ExcursionClothing`, `TransportType`, and entity interfaces (`User`, `Student`, `Excursion`, `Participation`, etc.).
 
+### Authentication & SSO
+
+Two login methods plus SSO:
+
+1. **PIN login** (`POST /api/proxy/login`) - Proxies credentials to PrismaEdu `/api/auth/external-check`. Creates SSO cookie.
+2. **Google OAuth** - Via frontend, calls backend proxy.
+3. **SSO silent login** (`GET /api/proxy/me`) - Reads `BIBLIO_SSO_TOKEN` cookie, verifies JWT, auto-logs in.
+
+`/api/proxy/login` creates the `BIBLIO_SSO_TOKEN` cookie directly (when `ENABLE_GLOBAL_SSO=true`) using `jwt.sign()` with `JWT_SSO_SECRET`. On page load, `App.tsx` calls `/api/proxy/me` for SSO auto-login before falling back to localStorage (`auth_user`). Role normalization: `TUTOR` → `TEACHER`.
+
 ### Role-Based Access
 
 - **DIRECCION** (Principal): Full access including user management and treasury

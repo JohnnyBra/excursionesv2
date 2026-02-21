@@ -336,7 +336,42 @@ const AppContent = () => {
         console.error("Init failed", e);
       }
 
-      // 2. Check auth
+      // 2. SSO silent check (cookie-based auto-login)
+      try {
+        const ssoRes = await fetch('/api/proxy/me');
+        if (ssoRes.ok) {
+          const ssoData = await ssoRes.json();
+          if (ssoData.success && ssoData.user) {
+            const ssoUser: User = {
+              id: ssoData.user.id,
+              username: ssoData.user.username || ssoData.user.email || ssoData.user.id,
+              name: ssoData.user.name || ssoData.user.id,
+              email: ssoData.user.email || '',
+              role: ssoData.user.role as User['role'],
+              classId: ssoData.user.classId,
+              password: '',
+              coordinatorCycleId: ssoData.user.coordinatorCycleId
+            };
+
+            // Merge with local user data if available (for coordinatorCycleId etc.)
+            const localUsers = db.getUsers();
+            const existingLocal = localUsers.find(u => u.id === ssoUser.id);
+            if (existingLocal) {
+              ssoUser.coordinatorCycleId = existingLocal.coordinatorCycleId || ssoUser.coordinatorCycleId;
+              ssoUser.classId = ssoUser.classId || existingLocal.classId;
+            }
+
+            setUser(ssoUser);
+            localStorage.setItem('auth_user', JSON.stringify(ssoUser));
+            setLoading(false);
+            return;
+          }
+        }
+      } catch (e) {
+        // Network error or SSO not available — fall through to localStorage
+      }
+
+      // 3. Fallback: check localStorage
       const stored = localStorage.getItem('auth_user');
       if (stored) setUser(JSON.parse(stored));
 

@@ -256,9 +256,20 @@ app.post('/api/proxy/login', async (req, res) => {
 
     let data = response.data;
 
-    // Si Prisma envía cookies (como BIBLIO_SSO_TOKEN), retransmitírselas al cliente de Excursiones
-    if (response.headers && response.headers['set-cookie']) {
-      res.setHeader('set-cookie', response.headers['set-cookie']);
+    // Crear cookie SSO directamente (en vez de retransmitir de PrismaEdu)
+    if (process.env.ENABLE_GLOBAL_SSO === 'true') {
+      const user = data.user || data;
+      const rawRole = (user.role || 'TUTOR').toUpperCase();
+      const ssoRole = rawRole === 'TUTOR' ? 'TEACHER' : rawRole;
+      const ssoPayload = { userId: user.id, email: (user.email || username || '').toLowerCase(), role: ssoRole, profileId: user.id };
+      const ssoToken = jwt.sign(ssoPayload, JWT_SSO_SECRET, { expiresIn: '8h' });
+      res.cookie('BIBLIO_SSO_TOKEN', ssoToken, {
+        domain: process.env.COOKIE_DOMAIN || '.bibliohispa.es',
+        path: '/',
+        httpOnly: true,
+        secure: true,
+        sameSite: 'Lax'
+      });
     }
 
     // Fix: Normalize response if it's flat
