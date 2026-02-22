@@ -41,7 +41,12 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         <a href="https://prisma.bibliohispa.es"
           className="flex items-center gap-2 p-2 bg-white/60 dark:bg-white/10 backdrop-blur rounded-lg transition-all duration-200 font-semibold text-xs text-gray-600 dark:text-gray-300 hover:bg-white/80 dark:hover:bg-white/20 hover:scale-[1.02]"
           title="Ir al Portal Prisma">
-          <LayoutGrid className="h-4 w-4" />
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+            <rect width="7" height="7" x="3" y="3" rx="1" />
+            <rect width="7" height="7" x="14" y="3" rx="1" fill="#3b82f6" stroke="#3b82f6" />
+            <rect width="7" height="7" x="14" y="14" rx="1" />
+            <rect width="7" height="7" x="3" y="14" rx="1" />
+          </svg>
         </a>
         <div className="flex items-center gap-2">
           <img src="logo.png" alt="Logo" className="h-8 w-auto" onError={(e) => e.currentTarget.src = 'https://via.placeholder.com/30'} />
@@ -85,7 +90,12 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             <a href="https://prisma.bibliohispa.es"
               className="flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-colors text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 font-medium"
               title="Ir al Portal Prisma">
-              <LayoutGrid size={20} />
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect width="7" height="7" x="3" y="3" rx="1" />
+                <rect width="7" height="7" x="14" y="3" rx="1" fill="#3b82f6" stroke="#3b82f6" />
+                <rect width="7" height="7" x="14" y="14" rx="1" />
+                <rect width="7" height="7" x="3" y="14" rx="1" />
+              </svg>
               <span>Prisma</span>
             </a>
           </div>
