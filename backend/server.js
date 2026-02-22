@@ -16,7 +16,7 @@ const DB_FILE = path.join(__dirname, 'database.json');
 
 // --- CONSTANTES PRISMA ---
 const PRISMA_URL = 'https://prisma.bibliohispa.es';
-const API_SECRET = 'YOUR_API_SECRET';
+const API_SECRET = process.env.API_SECRET || '';
 
 // --- CONFIGURACIÓN SOCKET.IO ---
 const httpServer = http.createServer(app); // Envolver app express
