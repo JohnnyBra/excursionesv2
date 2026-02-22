@@ -4,7 +4,7 @@ import { UserRole } from '../types';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LogOut, LayoutDashboard, Bus, Users,
-  Wallet, Settings, LayoutGrid
+  Wallet, Settings
 } from 'lucide-react';
 import { BottomNav } from './BottomNav';
 

@@ -8,7 +8,7 @@ import { Dashboard } from './components/Dashboard';
 import { ExcursionManager } from './components/ExcursionManager';
 import { UserManager } from './components/UserManager';
 import { ToastProvider, useToast } from './components/ui/Toast';
-import { Lock, User as UserIcon, Save, Loader, ShieldCheck, LayoutGrid, Moon, Sun, Monitor, LogOut } from 'lucide-react';
+import { Lock, User as UserIcon, Save, Loader, ShieldCheck, Moon, Sun, Monitor, LogOut } from 'lucide-react';
 import { useTheme } from './context/ThemeContext';
 
 // -- Auth Context --
