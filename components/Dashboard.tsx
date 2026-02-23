@@ -7,17 +7,17 @@ import { Calendar, DollarSign, Users, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const StatCard = ({ title, value, icon: Icon, color, onClick }: any) => (
-  <div 
+  <div
     onClick={onClick}
-    className={`bg-white p-6 rounded-xl shadow-sm border border-gray-100 transition-transform hover:scale-105 ${onClick ? 'cursor-pointer hover:shadow-md' : ''}`}
+    className={`bg-white dark:bg-surface-800 p-4 md:p-6 rounded-xl shadow-sm border border-gray-100 dark:border-surface-700 transition-transform hover:scale-105 ${onClick ? 'cursor-pointer hover:shadow-md' : ''}`}
   >
     <div className="flex justify-between items-start">
       <div>
-        <p className="text-sm font-medium text-gray-500">{title}</p>
-        <h3 className="text-2xl font-bold mt-1">{value}</h3>
+        <p className="text-xs md:text-sm font-medium text-gray-500 dark:text-surface-400">{title}</p>
+        <h3 className="text-xl md:text-2xl font-bold mt-1 text-gray-900 dark:text-white">{value}</h3>
       </div>
-      <div className={`p-3 rounded-lg ${color}`}>
-        <Icon size={24} className="text-white" />
+      <div className={`p-2 md:p-3 rounded-lg ${color}`}>
+        <Icon size={20} className="text-white" />
       </div>
     </div>
   </div>
@@ -80,17 +80,17 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800">Hola, {user?.name}</h2>
-          <p className="text-gray-500">Aquí tienes el resumen de las excursiones.</p>
+      <div className="flex justify-between items-center gap-3">
+        <div className="min-w-0">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-white truncate">Hola, {user?.name}</h2>
+          <p className="text-gray-500 dark:text-surface-400 text-sm hidden sm:block">Aquí tienes el resumen de las excursiones.</p>
         </div>
-        <div className="text-sm text-gray-500 bg-white px-4 py-2 rounded-lg shadow-sm border">
+        <div className="text-xs md:text-sm text-gray-500 dark:text-surface-400 bg-white dark:bg-surface-800 px-3 py-2 rounded-lg shadow-sm border border-gray-100 dark:border-surface-700 shrink-0 hidden sm:block">
           {new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
         <StatCard 
           title="Excursiones Activas" 
           value={relevantExcursions.length} 
@@ -125,39 +125,39 @@ export const Dashboard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h3 className="text-lg font-bold mb-4">Próximas Salidas</h3>
+        <div className="bg-white dark:bg-surface-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-surface-700">
+          <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Próximas Salidas</h3>
           <div className="space-y-4">
             {relevantExcursions.map(ex => (
-              <div 
-                key={ex.id} 
+              <div
+                key={ex.id}
                 onClick={() => handleExcursionClick(ex.id)}
-                className="flex items-center gap-4 p-3 hover:bg-blue-50 cursor-pointer rounded-lg transition-colors border-b border-gray-100 last:border-0 group"
+                className="flex items-center gap-3 p-3 hover:bg-blue-50 dark:hover:bg-primary-900/20 cursor-pointer rounded-lg transition-colors border-b border-gray-100 dark:border-surface-700 last:border-0 group"
               >
-                <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 font-bold shrink-0 group-hover:bg-blue-200 transition-colors">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-blue-100 dark:bg-primary-900/30 flex items-center justify-center text-blue-600 dark:text-primary-400 font-bold shrink-0 group-hover:bg-blue-200 dark:group-hover:bg-primary-900/50 transition-colors text-sm md:text-base">
                   {new Date(ex.dateStart).getDate()}
                 </div>
-                <div className="flex-1">
-                  <h4 className="font-semibold text-gray-800 group-hover:text-blue-700">{ex.title}</h4>
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                     <span>{ex.destination}</span>
-                     <span>•</span>
-                     <span className="font-medium text-blue-600">{getScopeLabel(ex.scope, ex.targetId)}</span>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-semibold text-gray-800 dark:text-white group-hover:text-blue-700 dark:group-hover:text-primary-400 truncate">{ex.title}</h4>
+                  <div className="flex items-center gap-1 text-xs md:text-sm text-gray-500 dark:text-surface-400">
+                     <span className="truncate">{ex.destination}</span>
+                     <span className="shrink-0">•</span>
+                     <span className="font-medium text-blue-600 dark:text-primary-400 truncate">{getScopeLabel(ex.scope, ex.targetId)}</span>
                   </div>
                 </div>
-                <span className={`text-xs px-2 py-1 rounded-full ${ex.scope === 'GLOBAL' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
+                <span className={`text-xs px-2 py-1 rounded-full shrink-0 hidden sm:inline ${ex.scope === 'GLOBAL' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400' : 'bg-gray-100 dark:bg-surface-700 text-gray-600 dark:text-surface-300'}`}>
                   {ex.scope}
                 </span>
               </div>
             ))}
             {relevantExcursions.length === 0 && (
-              <p className="text-gray-400 text-center py-4">No hay excursiones programadas</p>
+              <p className="text-gray-400 dark:text-surface-500 text-center py-4">No hay excursiones programadas</p>
             )}
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h3 className="text-lg font-bold mb-4">Balance Financiero</h3>
+        <div className="bg-white dark:bg-surface-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-surface-700">
+          <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Balance Financiero</h3>
           <div className="h-64 w-full">
              <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData}>
