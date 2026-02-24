@@ -83,6 +83,17 @@ The participation table shows columns conditionally based on excursion state:
 
 Vite proxies `/api/*` requests to `http://localhost:3005` during development (configured in `vite.config.ts`).
 
+## Unified Header
+
+`src/components/Layout.tsx` implements the unified header design. The **mobile header** (`md:hidden`) uses the `.header-glass` class (defined in `src/styles/theme.css`) with:
+- **Logo**: `h-10` with `dark:brightness-0 dark:invert` for theme adaptation
+- **3-button theme toggle**: Sun / Monitor / Moon (Light / System / Dark), uses `useTheme()` from `src/context/ThemeContext.tsx`, active state styled with `text-[#234B6E]`
+- **Prisma link**: SVG icon (4 squares, top-right filled `#3b82f6`), links to `https://prisma.bibliohispa.es`
+
+The **desktop sidebar** (`hidden md:flex`) is independent — it has its own Prisma link, navigation items, user info, and logout button. It does NOT use the unified header pattern; only the mobile header was unified.
+
+The `.header-glass` class uses `rgba(255,255,255,0.45)` background with `backdrop-filter: blur(24px) saturate(1.6)`, with a `.dark` variant. Theme is managed via `ThemeContext` with `useTheme()` hook supporting `'light' | 'dark' | 'system'`, toggling `.dark` class on `<html>`.
+
 ## Key Conventions
 
 - All UI text is in **Spanish** — maintain this when adding or modifying user-facing strings.
