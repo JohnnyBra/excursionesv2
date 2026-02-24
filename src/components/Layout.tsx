@@ -4,8 +4,9 @@ import { UserRole } from '../types';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LogOut, LayoutDashboard, Bus, Users,
-  Wallet, Settings
+  Wallet, Settings, Sun, Moon, Monitor
 } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 import { BottomNav } from './BottomNav';
 
 interface LayoutProps {
@@ -16,6 +17,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { theme, setTheme } = useTheme();
 
   const handleNav = (path: string) => {
     navigate(path);
@@ -36,23 +38,57 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row transition-colors duration-300">
-      {/* Mobile Header (Branding only) */}
-      <div className="md:hidden bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-4 flex justify-between items-center border-b border-gray-200 dark:border-white/10 sticky top-0 z-40 transition-colors duration-300">
-        <a href="https://prisma.bibliohispa.es"
-          className="flex items-center gap-2 p-2 bg-white/60 dark:bg-white/10 backdrop-blur rounded-lg transition-all duration-200 font-semibold text-xs text-gray-600 dark:text-gray-300 hover:bg-white/80 dark:hover:bg-white/20 hover:scale-[1.02]"
-          title="Ir al Portal Prisma">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <rect width="7" height="7" x="3" y="3" rx="1" />
-            <rect width="7" height="7" x="14" y="3" rx="1" fill="#3b82f6" stroke="#3b82f6" />
-            <rect width="7" height="7" x="14" y="14" rx="1" />
-            <rect width="7" height="7" x="3" y="14" rx="1" />
-          </svg>
-        </a>
+      {/* Mobile Header */}
+      <div className="md:hidden header-glass sticky top-0 z-40 flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2">
-          <img src="logo.png" alt="Logo" className="h-8 w-auto" onError={(e) => e.currentTarget.src = 'https://via.placeholder.com/30'} />
-          <h1 className="font-bold text-sm text-gray-800 dark:text-gray-100">Gestor Excursiones</h1>
+          <img
+            src="logo.png"
+            alt="Logo La Hispanidad"
+            className="h-10 w-auto object-contain dark:brightness-0 dark:invert"
+            onError={(e) => e.currentTarget.src = 'https://via.placeholder.com/30'}
+          />
         </div>
-        <div className="w-8" />
+
+        <div className="flex items-center gap-2">
+          {/* Theme Toggle (3 buttons) */}
+          <div className="flex bg-gray-200 dark:bg-zinc-800 rounded-lg p-0.5">
+            <button
+              onClick={() => setTheme('light')}
+              className={`flex justify-center p-1.5 rounded-md text-sm transition-colors ${theme === 'light' ? 'bg-white text-[#234B6E] shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+              title="Modo claro"
+            >
+              <Sun size={14} />
+            </button>
+            <button
+              onClick={() => setTheme('system')}
+              className={`flex justify-center p-1.5 rounded-md text-sm transition-colors ${theme === 'system' ? 'bg-white dark:bg-zinc-700 text-[#234B6E] shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+              title="Automático"
+            >
+              <Monitor size={14} />
+            </button>
+            <button
+              onClick={() => setTheme('dark')}
+              className={`flex justify-center p-1.5 rounded-md text-sm transition-colors ${theme === 'dark' ? 'bg-zinc-700 text-[#234B6E] shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+              title="Modo oscuro"
+            >
+              <Moon size={14} />
+            </button>
+          </div>
+
+          {/* Prisma Link */}
+          <a
+            href="https://prisma.bibliohispa.es"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-colors font-medium"
+            title="Ir al Portal Prisma"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect width="7" height="7" x="3" y="3" rx="1" />
+              <rect width="7" height="7" x="14" y="3" rx="1" fill="#3b82f6" stroke="#3b82f6" />
+              <rect width="7" height="7" x="14" y="14" rx="1" />
+              <rect width="7" height="7" x="3" y="14" rx="1" />
+            </svg>
+          </a>
+        </div>
       </div>
 
       {/* Sidebar (Desktop Only) */}
