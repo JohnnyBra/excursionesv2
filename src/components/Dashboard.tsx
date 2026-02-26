@@ -62,18 +62,32 @@ export const Dashboard: React.FC = () => {
 
   const upcomingExcursions = relevantExcursions.filter(e => new Date(e.dateEnd) >= new Date());
 
+  // Para excursiones terminadas usa asistencia real; para pendientes usa estimación
+  const getEntryStudentCount = (excId: string, estimatedStudents: number) => {
+    const parts = participations.filter(p => p.excursionId === excId);
+    const attendedCount = parts.filter(p => p.attended).length;
+    const paidCount = parts.filter(p => p.paid).length;
+    return attendedCount || paidCount || estimatedStudents;
+  };
+
+  const getExcursionCost = (exc: typeof relevantExcursions[0]) => {
+    const isPast = new Date(exc.dateEnd) < new Date();
+    const studentCount = isPast
+      ? getEntryStudentCount(exc.id, Number(exc.estimatedStudents || 0))
+      : Number(exc.estimatedStudents || 0);
+    return Number(exc.costBus) + Number(exc.costOther || 0) + (Number(exc.costEntry) * studentCount);
+  };
+
   const totalCollected = relevantExcursions.reduce((acc, exc) => {
     const parts = participations.filter(p => p.excursionId === exc.id && p.paid);
     return acc + parts.reduce((sum, p) => sum + p.amountPaid, 0);
   }, 0);
 
-  const totalCost = relevantExcursions.reduce((acc, exc) => {
-    return acc + Number(exc.costBus) + Number(exc.costOther || 0) + (Number(exc.costEntry) * Number(exc.estimatedStudents || 0));
-  }, 0);
+  const totalCost = relevantExcursions.reduce((acc, exc) => acc + getExcursionCost(exc), 0);
 
   const chartData = relevantExcursions.slice(0, 5).map(e => ({
     name: e.title.substring(0, 15) + '...',
-    cost: Number(e.costBus) + Number(e.costOther || 0) + (Number(e.costEntry) * Number(e.estimatedStudents || 0)),
+    cost: getExcursionCost(e),
     collected: participations
       .filter(p => p.excursionId === e.id && p.paid)
       .reduce((sum, p) => sum + p.amountPaid, 0)
