@@ -9,6 +9,7 @@ export enum UserRole {
 export enum ExcursionScope {
   GLOBAL = 'GLOBAL',
   CICLO = 'CICLO',
+  NIVEL = 'NIVEL',
   CLASE = 'CLASE'
 }
 
@@ -64,6 +65,7 @@ export interface ClassGroup {
   name: string;
   cycleId: string;
   tutorId: string;
+  level?: string;
 }
 
 export interface Student {
