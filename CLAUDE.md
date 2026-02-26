@@ -49,10 +49,15 @@ No external state library. Uses a hybrid approach:
 - **Key endpoints**: `GET /api/db` (load all data), `POST /api/sync/:entity` (upsert), `POST /api/sync/:entity/bulk` (bulk upsert), `DELETE /api/sync/:entity/:id`, `POST /api/restore` (restore backup), `POST /api/proxy/login` (proxy to PrismaEDU), `GET /api/proxy/users|classes|students` (fetch from external PrismaEDU system).
 - **Socket.io** broadcasts `db_update` on every write so all connected clients stay in sync.
 - **External integration**: Proxies requests to `https://prisma.bibliohispa.es` (PrismaEDU school management system) for user/class/student imports.
+- **`backend/database.json` is gitignored** — production data is never touched by git operations.
 
 ### Types (`src/types.ts`)
 
-Shared TypeScript interfaces and enums: `UserRole` (DIRECCION, TUTOR, TESORERIA, COORDINACION, ADMIN), `ExcursionScope` (GLOBAL, CICLO, CLASE), `ExcursionClothing`, `TransportType`, and entity interfaces (`User`, `Student`, `Excursion`, `Participation`, etc.).
+Shared TypeScript interfaces and enums:
+
+- `UserRole`: `DIRECCION, TUTOR, TESORERIA, COORDINACION, ADMIN`
+- `ExcursionScope`: `GLOBAL, CICLO, CLASE` (branch `feature/scope-nivel` adds `NIVEL`)
+- `ExcursionClothing`, `TransportType`
 
 ### Authentication & SSO
 
@@ -68,9 +73,50 @@ Two login methods plus SSO:
 
 - **DIRECCION** (Principal): Full access including user management and treasury
 - **TESORERIA** (Treasurer): Treasury and payment tracking
-- **TUTOR** (Teacher): View excursions for own class/cycle
+- **TUTOR** (Teacher): View/create excursions for own class or own cycle
 - **COORDINACION** (Coordinator): Cycle-level access
 - **ADMIN**: Full access
+
+## Financial Model
+
+### Cost fields on `Excursion`
+- `costBus` — total bus cost (fixed, shared among all students)
+- `costOther` — other fixed costs (parking, materials, etc.)
+- `costEntry` — **per-student** entry price (unitario, NOT total)
+- `estimatedStudents` — estimated headcount
+- `costGlobal` — **price per student** (auto-calculated: `⌈(costBus + costOther) / estimatedStudents⌉ + costEntry`)
+
+**`costEntry` is per-student** — never add it directly to `costBus`. Always multiply by student count:
+```
+totalCost = costBus + costOther + (costEntry × studentCount)
+```
+
+### Real cost calculation for past excursions
+For excursions where `dateEnd < today`, `studentCount` for entries uses real attendance data (priority order):
+1. `attended` count (if recorded)
+2. `paid` count (fallback when attendance not recorded)
+3. `estimatedStudents` (last resort)
+
+For future excursions, always uses `estimatedStudents`.
+
+This logic is implemented in `getExcursionCost()` in `Dashboard.tsx` and in the budget tab balance summary in `ExcursionManager.tsx`.
+
+### amountPaid sync on price change
+When `costGlobal` changes and is saved via `handleSave`, all existing paid participations for that excursion have their `amountPaid` updated to the new `costGlobal`. This keeps all balance calculations (UI and PDF) consistent.
+
+### Balance displays
+- **Dashboard "Recaudado Total"**: sum of `amountPaid` across all paid participations of relevant excursions.
+- **Dashboard "Balance Neto"**: `totalCollected - totalCost`. `totalCost` uses real attendance for past excursions.
+- **Dashboard chart ("Balance Financiero")**: shows all excursions with `cost > 0` (free excursions excluded); scrollable horizontally (90px/bar minimum width); labels rotate −35° when >5 excursions.
+- **Tab Presupuesto** (ExcursionManager): shows live summary — Recaudado (`paidCount × costGlobal`), Pendiente, Balance (Recaudado − Coste Real) — when not in edit mode.
+
+## Excursion List & Dashboard
+
+### Pending vs. completed split
+- **Dashboard "Próximas Salidas"**: shows only excursions where `dateEnd >= today` (no past excursions).
+- **Tab Excursiones sidebar**: divided into two sections:
+  - **Pendientes** — `dateEnd >= today`
+  - **Realizadas** — `dateEnd < today` (only shown if any exist)
 
 ### Participation Table (`ExcursionManager.tsx`)
 
