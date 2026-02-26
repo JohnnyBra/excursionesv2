@@ -49,10 +49,16 @@ No external state library. Uses a hybrid approach:
 - **Key endpoints**: `GET /api/db` (load all data), `POST /api/sync/:entity` (upsert), `POST /api/sync/:entity/bulk` (bulk upsert), `DELETE /api/sync/:entity/:id`, `POST /api/restore` (restore backup), `POST /api/proxy/login` (proxy to PrismaEDU), `GET /api/proxy/users|classes|students` (fetch from external PrismaEDU system).
 - **Socket.io** broadcasts `db_update` on every write so all connected clients stay in sync.
 - **External integration**: Proxies requests to `https://prisma.bibliohispa.es` (PrismaEDU school management system) for user/class/student imports.
+- **`backend/database.json` is gitignored** — production data is never touched by git operations.
 
 ### Types (`src/types.ts`)
 
-Shared TypeScript interfaces and enums: `UserRole` (DIRECCION, TUTOR, TESORERIA, COORDINACION, ADMIN), `ExcursionScope` (GLOBAL, CICLO, CLASE), `ExcursionClothing`, `TransportType`, and entity interfaces (`User`, `Student`, `Excursion`, `Participation`, etc.).
+Shared TypeScript interfaces and enums:
+
+- `UserRole`: `DIRECCION, TUTOR, TESORERIA, COORDINACION, ADMIN`
+- `ExcursionScope`: `GLOBAL, CICLO, NIVEL, CLASE` (see Scope System below)
+- `ExcursionClothing`, `TransportType`
+- `ClassGroup` has a `level?: string` field populated from `PrismaClass.level` during import
 
 ### Authentication & SSO
 
@@ -68,9 +74,77 @@ Two login methods plus SSO:
 
 - **DIRECCION** (Principal): Full access including user management and treasury
 - **TESORERIA** (Treasurer): Treasury and payment tracking
-- **TUTOR** (Teacher): View excursions for own class/cycle
+- **TUTOR** (Teacher): View/create excursions for own class, own level (NIVEL), or own cycle
 - **COORDINACION** (Coordinator): Cycle-level access
 - **ADMIN**: Full access
+
+## Scope System
+
+Excursions have four scope levels, stored in `excursion.scope` + `excursion.targetId`:
+
+| Scope | `targetId` | Destinatarios |
+|-------|-----------|---------------|
+| `GLOBAL` | `''` | Todo el centro |
+| `CICLO` | `cycleId` | Todo un ciclo |
+| `NIVEL` | `"{cycleId}\|{level}"` | Todas las clases de un curso (ej. 5ºA y 5ºB) |
+| `CLASE` | `classId` | Una sola clase |
+
+**NIVEL format**: `targetId = "primaria-tercer-ciclo|5"` — cicleId and level joined by `|`.
+
+### Who can create what scope
+- **TUTOR**: CLASE (propia), NIVEL (su curso dentro de su ciclo), CICLO (su ciclo)
+- **DIRECCION/ADMIN**: todos los scopes
+
+### Visibility rules for TUTOR
+A tutor sees an excursion if:
+- `scope === GLOBAL`
+- `scope === CICLO` and `targetId === myClass.cycleId`
+- `scope === NIVEL` and `targetId === "{myClass.cycleId}|{myClass.level}"`
+- `scope === CLASE` and `targetId === myClass.id`
+
+### Class import from PrismaEdu
+`mockDb.ts` imports `PrismaClass` (which has `stage, cycle, level, group`) and maps to local `ClassGroup`:
+- `cycleId` = `"{stage}-{cycle}".toLowerCase().replace(/\s+/g, '-')`
+- `level` = `PrismaClass.level` (preserved on merge)
+
+### Generating participations (`generateParticipationsForExcursion`)
+Called automatically on `db.addExcursion()` and `db.updateExcursion()` (when scope/targetId changed). Filters `localState.students` by scope:
+- `NIVEL`: splits `targetId` on `|`, filters classes by `cycleId` and `level`, then students of those classes.
+
+## Financial Model
+
+### Cost fields on `Excursion`
+- `costBus` — total bus cost (fixed, shared)
+- `costOther` — other fixed costs (parking, materials, etc.)
+- `costEntry` — **per-student** entry price (unitario, NOT total)
+- `estimatedStudents` — estimated headcount
+- `costGlobal` — **price per student** (auto-calculated: `⌈(costBus + costOther) / estimatedStudents⌉ + costEntry`)
+
+**`costEntry` is per-student** — never add it directly to `costBus`. Always multiply by student count.
+
+### Real cost calculation
+Total cost of an excursion = `costBus + costOther + (costEntry × studentCount)`
+
+For **past excursions**, `studentCount` uses real attendance data:
+1. `attended` count (if recorded) → 2. `paid` count (fallback) → 3. `estimatedStudents` (last resort)
+
+For **future excursions**, always uses `estimatedStudents`.
+
+This logic is in `getExcursionCost()` (Dashboard) and in the budget tab balance summary (ExcursionManager).
+
+### amountPaid sync
+When `costGlobal` changes and is saved (`handleSave`), all existing paid participations for that excursion have their `amountPaid` updated to the new `costGlobal`. This keeps all balance calculations accurate.
+
+### Balance displays
+- **Dashboard "Balance Neto"**: `totalCollected - totalCost` across all relevant excursions. `totalCost` uses real attendance for past excursions.
+- **Dashboard chart**: shows all excursions with `cost > 0` (free excursions excluded); scrollable horizontally (90px/bar); labels rotate −35° when >5 items.
+- **Tab Presupuesto** (ExcursionManager): shows live summary — Recaudado, Pendiente, Balance (Recaudado − Coste Real) — when not editing.
+
+## Excursion List & Dashboard
+
+### Pending vs. completed split
+- **Dashboard "Próximas Salidas"**: shows only excursions where `dateEnd >= today`.
+- **Tab Excursiones sidebar**: split into two sections — **Pendientes** (`dateEnd >= today`) and **Realizadas** (`dateEnd < today`).
 
 ### Participation Table (`ExcursionManager.tsx`)
 
