@@ -118,6 +118,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
 
     // New Selectors for Creation Flow
     const [selectedCycleId, setSelectedCycleId] = useState<string>('');
+    const [selectedLevelId, setSelectedLevelId] = useState<string>('');
 
     // Participants View State
     const [participants, setParticipants] = useState<Participation[]>([]);
@@ -238,6 +239,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                 visible = all.filter(e =>
                     e.scope === ExcursionScope.GLOBAL ||
                     (e.scope === ExcursionScope.CICLO && e.targetId === user.coordinatorCycleId) ||
+                    (e.scope === ExcursionScope.NIVEL && (e.targetId || '').startsWith(user.coordinatorCycleId + '|')) ||
                     (e.scope === ExcursionScope.CLASE && e.targetId && cycleClasses.includes(e.targetId))
                 );
             } else {
@@ -245,6 +247,10 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                 visible = all.filter(e =>
                     e.scope === ExcursionScope.GLOBAL ||
                     (e.scope === ExcursionScope.CICLO && e.targetId === myClass?.cycleId) ||
+                    (e.scope === ExcursionScope.NIVEL && (() => {
+                        const [cycleId, level] = (e.targetId || '').split('|');
+                        return cycleId === myClass?.cycleId && level === myClass?.level;
+                    })()) ||
                     (e.scope === ExcursionScope.CLASE && e.targetId === currentUser?.classId)
                 );
             }
@@ -264,6 +270,11 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
         if (scope === ExcursionScope.CICLO) {
             const cycle = cyclesList.find(c => c.id === targetId);
             return `Ciclo ${cycle?.name || ''}`;
+        }
+        if (scope === ExcursionScope.NIVEL) {
+            const [cycleId, level] = (targetId || '').split('|');
+            const cycle = cyclesList.find(c => c.id === cycleId);
+            return `${level}º (${cycle?.name || ''})`;
         }
         if (scope === ExcursionScope.CLASE) {
             const cls = classesList.find(c => c.id === targetId);
@@ -320,6 +331,11 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
 
         // Reset selections
         setSelectedCycleId(initialCycleId);
+        // Para TUTOR, pre-inicializar su nivel
+        const initialLevel = user?.role === UserRole.TUTOR && currentUser?.classId
+            ? db.classes.find(c => c.id === currentUser.classId)?.level || ''
+            : '';
+        setSelectedLevelId(initialLevel);
 
         setSelectedExcursion(newExcursion);
         setFormData(newExcursion);
@@ -1514,6 +1530,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                                  {/* ... Same Scope Logic ... */}
                                                 <label className="label-sm mb-2 block">Destinatarios</label>
                                                 <div className="space-y-3">
+                                                    {/* Ciclo */}
                                                     <div>
                                                         <label className="text-xs text-gray-500 font-semibold uppercase">Ciclo</label>
                                                         <select
@@ -1523,6 +1540,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                                             onChange={e => {
                                                                 const cId = e.target.value;
                                                                 setSelectedCycleId(cId);
+                                                                setSelectedLevelId('');
                                                                 if (cId) {
                                                                     setFormData({ ...formData, scope: ExcursionScope.CICLO, targetId: cId });
                                                                 } else {
@@ -1538,6 +1556,47 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                                                 ))}
                                                         </select>
                                                     </div>
+                                                    {/* Nivel — solo visible cuando hay ciclo seleccionado */}
+                                                    {selectedCycleId && (() => {
+                                                        const myClassLevel = classesList.find(c => c.id === currentUser?.classId)?.level || '';
+                                                        const levelsInCycle = [...new Set(
+                                                            classesList
+                                                                .filter(c => c.cycleId === selectedCycleId && c.level)
+                                                                .map(c => c.level!)
+                                                        )].sort();
+                                                        const visibleLevels = user?.role === UserRole.TUTOR
+                                                            ? levelsInCycle.filter(l => l === myClassLevel)
+                                                            : levelsInCycle;
+                                                        if (visibleLevels.length === 0) return null;
+                                                        return (
+                                                            <div>
+                                                                <label className="text-xs text-gray-500 font-semibold uppercase">Nivel</label>
+                                                                <select
+                                                                    className="input-field mt-1"
+                                                                    value={selectedLevelId}
+                                                                    onChange={e => {
+                                                                        const lvl = e.target.value;
+                                                                        setSelectedLevelId(lvl);
+                                                                        if (lvl) {
+                                                                            setFormData({ ...formData, scope: ExcursionScope.NIVEL, targetId: `${selectedCycleId}|${lvl}` });
+                                                                            // Estimar alumnos del nivel
+                                                                            const nivelClasses = classesList.filter(c => c.cycleId === selectedCycleId && c.level === lvl).map(c => c.id);
+                                                                            const nivelStudents = db.getStudents().filter(s => nivelClasses.includes(s.classId)).length;
+                                                                            if (nivelStudents > 0) setFormData(prev => ({ ...prev, scope: ExcursionScope.NIVEL, targetId: `${selectedCycleId}|${lvl}`, estimatedStudents: nivelStudents }));
+                                                                        } else {
+                                                                            setFormData({ ...formData, scope: ExcursionScope.CICLO, targetId: selectedCycleId });
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <option value="">-- Todo el ciclo --</option>
+                                                                    {visibleLevels.map(lvl => (
+                                                                        <option key={lvl} value={lvl}>{lvl}º</option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
+                                                        );
+                                                    })()}
+                                                    {/* Clase */}
                                                     <div>
                                                         <label className="text-xs text-gray-500 font-semibold uppercase">Clase</label>
                                                         <select
@@ -1562,7 +1621,9 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                                                     });
                                                                     setFormData(prev => ({ ...prev, estimatedStudents: classStudents.length }));
                                                                 } else {
-                                                                    if (selectedCycleId) {
+                                                                    if (selectedLevelId) {
+                                                                        setFormData({ ...formData, scope: ExcursionScope.NIVEL, targetId: `${selectedCycleId}|${selectedLevelId}` });
+                                                                    } else if (selectedCycleId) {
                                                                         setFormData({ ...formData, scope: ExcursionScope.CICLO, targetId: selectedCycleId });
                                                                     } else {
                                                                         setFormData({ ...formData, scope: ExcursionScope.GLOBAL, targetId: '' });
@@ -1570,9 +1631,10 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                                                 }
                                                             }}
                                                         >
-                                                            <option value="">{selectedCycleId ? `Todo el ciclo` : '--'}</option>
+                                                            <option value="">{selectedLevelId ? `Todo el nivel ${selectedLevelId}º` : selectedCycleId ? 'Todo el ciclo' : '--'}</option>
                                                             {classesList
                                                                 .filter(c => !selectedCycleId || c.cycleId === selectedCycleId)
+                                                                .filter(c => !selectedLevelId || c.level === selectedLevelId)
                                                                 .filter(c => user?.role !== UserRole.TUTOR || c.id === currentUser?.classId)
                                                                 .map(c => (
                                                                     <option key={c.id} value={c.id}>{c.name}</option>
