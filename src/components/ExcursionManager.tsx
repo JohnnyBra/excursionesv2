@@ -299,16 +299,6 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
     const handleCreateNew = () => {
         if (user?.role === UserRole.TESORERIA) return;
 
-        let initialCycleId = '';
-        if (user?.role === UserRole.TUTOR) {
-            if (coordinatorMode && user.coordinatorCycleId) {
-                initialCycleId = user.coordinatorCycleId;
-            } else if (currentUser?.classId) {
-                const myClass = db.classes.find(c => c.id === currentUser.classId);
-                if (myClass) initialCycleId = myClass.cycleId;
-            }
-        }
-
         const newExcursion: Excursion = {
             id: crypto.randomUUID(),
             title: 'Nueva Excursión',
@@ -329,19 +319,30 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
             creatorId: user?.id || ''
         };
 
-        // Reset selections
-        setSelectedCycleId(initialCycleId);
-        // Para TUTOR, pre-inicializar su nivel
-        const initialLevel = user?.role === UserRole.TUTOR && currentUser?.classId
-            ? db.classes.find(c => c.id === currentUser.classId)?.level || ''
-            : '';
-        setSelectedLevelId(initialLevel);
-
         setSelectedExcursion(newExcursion);
         setFormData(newExcursion);
+        initScopeSelectors(newExcursion);
         setParticipants([]);
         setIsEditing(true);
         setActiveTab('details');
+    };
+
+    const initScopeSelectors = (excursion: Partial<Excursion>) => {
+        if (excursion.scope === ExcursionScope.GLOBAL || !excursion.scope) {
+            setSelectedCycleId('');
+            setSelectedLevelId('');
+        } else if (excursion.scope === ExcursionScope.CICLO) {
+            setSelectedCycleId(excursion.targetId || '');
+            setSelectedLevelId('');
+        } else if (excursion.scope === ExcursionScope.NIVEL) {
+            const [cycleId, level] = (excursion.targetId || '').split('|');
+            setSelectedCycleId(cycleId || '');
+            setSelectedLevelId(level || '');
+        } else if (excursion.scope === ExcursionScope.CLASE) {
+            const cls = classesList.find(c => c.id === excursion.targetId);
+            setSelectedCycleId(cls?.cycleId || '');
+            setSelectedLevelId(cls?.level || '');
+        }
     };
 
     const handleSelect = (ex: Excursion) => {
@@ -1326,7 +1327,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                         <button onClick={generatePDF} className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 shadow-sm text-sm">
                                             <Printer size={18} />
                                         </button>
-                                        <button onClick={() => setIsEditing(true)} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm text-sm font-medium flex items-center gap-2">
+                                        <button onClick={() => { initScopeSelectors(formData); setIsEditing(true); }} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm text-sm font-medium flex items-center gap-2">
                                             <Edit size={16} /> {user?.role === UserRole.TESORERIA ? 'Costes' : 'Editar'}
                                         </button>
                                     </>
@@ -1355,7 +1356,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                             <ChevronDown size={14} className={`transition-transform duration-200 ${mobileActionsOpen ? 'rotate-180' : ''}`} />
                                             Acciones
                                         </button>
-                                        <button onClick={() => setIsEditing(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-blue-600 dark:bg-blue-500">
+                                        <button onClick={() => { initScopeSelectors(formData); setIsEditing(true); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-blue-600 dark:bg-blue-500">
                                             <Edit size={14} /> {user?.role === UserRole.TESORERIA ? 'Costes' : 'Editar'}
                                         </button>
                                     </div>
@@ -1456,7 +1457,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                     {canEditBudget() && (
                                         <div className="mt-6 flex justify-end gap-2 pt-4 border-t border-gray-100">
                                             {!isEditing ? (
-                                                <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg">
+                                                <button onClick={() => { initScopeSelectors(formData); setIsEditing(true); }} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg">
                                                     <Edit size={16} /> Editar Presupuesto
                                                 </button>
                                             ) : (
@@ -1525,124 +1526,221 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                                 <textarea className="input-field h-24" placeholder="Explica los motivos..." value={formData.justification || ''} onChange={e => setFormData({ ...formData, justification: e.target.value })} disabled={isFieldDisabled('justification')} />
                                             </div>
 
-                                            {/* Logic for Scope Selection (keeping existing logic) */}
+                                            {/* Scope Selection */}
                                             <div className="col-span-2 bg-gray-50 dark:bg-white/5 p-4 rounded-xl border border-white/10">
-                                                 {/* ... Same Scope Logic ... */}
                                                 <label className="label-sm mb-2 block">Destinatarios</label>
-                                                <div className="space-y-3">
-                                                    {/* Ciclo */}
-                                                    <div>
-                                                        <label className="text-xs text-gray-500 font-semibold uppercase">Ciclo</label>
-                                                        <select
-                                                            className="input-field mt-1"
-                                                            value={selectedCycleId}
-                                                            onChange={e => {
-                                                                const cId = e.target.value;
-                                                                setSelectedCycleId(cId);
-                                                                setSelectedLevelId('');
-                                                                if (cId) {
-                                                                    setFormData({ ...formData, scope: ExcursionScope.CICLO, targetId: cId });
-                                                                } else {
-                                                                    setFormData({ ...formData, scope: ExcursionScope.GLOBAL, targetId: '' });
-                                                                }
-                                                            }}
-                                                        >
-                                                            {user?.role !== UserRole.TUTOR && (
-                                                                <option value="">-- Todos los Ciclos --</option>
-                                                            )}
-                                                            {cyclesList
-                                                                .filter(c => user?.role !== UserRole.TUTOR || c.id === selectedCycleId)
-                                                                .map(c => (
-                                                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                                                ))}
-                                                        </select>
-                                                    </div>
-                                                    {/* Nivel — solo visible cuando hay ciclo seleccionado */}
-                                                    {selectedCycleId && (() => {
-                                                        const myClassLevel = classesList.find(c => c.id === currentUser?.classId)?.level || '';
-                                                        const levelsInCycle = [...new Set(
-                                                            classesList
-                                                                .filter(c => c.cycleId === selectedCycleId && c.level)
-                                                                .map(c => c.level!)
-                                                        )].sort();
-                                                        const visibleLevels = user?.role === UserRole.TUTOR
-                                                            ? levelsInCycle.filter(l => l === myClassLevel)
-                                                            : levelsInCycle;
-                                                        if (visibleLevels.length === 0) return null;
-                                                        return (
-                                                            <div>
-                                                                <label className="text-xs text-gray-500 font-semibold uppercase">Nivel</label>
-                                                                <select
-                                                                    className="input-field mt-1"
-                                                                    value={selectedLevelId}
-                                                                    onChange={e => {
-                                                                        const lvl = e.target.value;
-                                                                        setSelectedLevelId(lvl);
-                                                                        if (lvl) {
-                                                                            setFormData({ ...formData, scope: ExcursionScope.NIVEL, targetId: `${selectedCycleId}|${lvl}` });
-                                                                            // Estimar alumnos del nivel
-                                                                            const nivelClasses = classesList.filter(c => c.cycleId === selectedCycleId && c.level === lvl).map(c => c.id);
-                                                                            const nivelStudents = db.getStudents().filter(s => nivelClasses.includes(s.classId)).length;
-                                                                            if (nivelStudents > 0) setFormData(prev => ({ ...prev, scope: ExcursionScope.NIVEL, targetId: `${selectedCycleId}|${lvl}`, estimatedStudents: nivelStudents }));
-                                                                        } else {
-                                                                            setFormData({ ...formData, scope: ExcursionScope.CICLO, targetId: selectedCycleId });
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    <option value="">-- Todo el ciclo --</option>
-                                                                    {visibleLevels.map(lvl => (
-                                                                        <option key={lvl} value={lvl}>{lvl}º</option>
-                                                                    ))}
-                                                                </select>
-                                                            </div>
-                                                        );
-                                                    })()}
-                                                    {/* Clase */}
-                                                    <div>
-                                                        <label className="text-xs text-gray-500 font-semibold uppercase">Clase</label>
-                                                        <select
-                                                            className="input-field mt-1"
-                                                            value={formData.scope === ExcursionScope.CLASE ? formData.targetId : ''}
-                                                            onChange={async (e) => {
-                                                                const clId = e.target.value;
-                                                                if (clId) {
-                                                                    setFormData({ ...formData, scope: ExcursionScope.CLASE, targetId: clId });
-                                                                    const proxyStudents = await db.fetchProxyStudents();
-                                                                    const classStudents = proxyStudents.filter((s: any) => s.classId === clId);
-                                                                    classStudents.forEach((s: any) => {
-                                                                        const exists = db.getStudents().find(ls => ls.id === s.id);
-                                                                        if (!exists) {
-                                                                            db.addStudent({
-                                                                                id: s.id,
-                                                                                name: `${s.name} ${s.surnames || ''}`.trim(),
-                                                                                classId: s.classId
-                                                                            });
-                                                                        }
+
+                                                {/* TUTOR: Radio buttons simplificados */}
+                                                {user?.role === UserRole.TUTOR && !coordinatorMode ? (() => {
+                                                    const myClass = classesList.find(c => c.id === currentUser?.classId);
+                                                    if (!myClass) return <p className="text-sm text-gray-500">No se encontró tu clase.</p>;
+
+                                                    const myCycle = cyclesList.find(c => c.id === myClass.cycleId);
+                                                    const myLevel = myClass.level;
+
+                                                    // Check if NIVEL option is meaningful (more than 1 class in same level)
+                                                    const levelClasses = myLevel
+                                                        ? classesList.filter(c => c.cycleId === myClass.cycleId && c.level === myLevel)
+                                                        : [];
+                                                    const showNivel = myLevel && levelClasses.length > 1;
+
+                                                    const handleTutorScope = async (scope: ExcursionScope) => {
+                                                        if (scope === ExcursionScope.CLASE) {
+                                                            setSelectedCycleId(myClass.cycleId);
+                                                            setSelectedLevelId(myLevel || '');
+                                                            setFormData(prev => ({ ...prev, scope: ExcursionScope.CLASE, targetId: myClass.id }));
+                                                            const proxyStudents = await db.fetchProxyStudents();
+                                                            const classStudents = proxyStudents.filter((s: any) => s.classId === myClass.id);
+                                                            classStudents.forEach((s: any) => {
+                                                                const exists = db.getStudents().find(ls => ls.id === s.id);
+                                                                if (!exists) {
+                                                                    db.addStudent({
+                                                                        id: s.id,
+                                                                        name: `${s.name} ${s.surnames || ''}`.trim(),
+                                                                        classId: s.classId
                                                                     });
-                                                                    setFormData(prev => ({ ...prev, estimatedStudents: classStudents.length }));
-                                                                } else {
-                                                                    if (selectedLevelId) {
-                                                                        setFormData({ ...formData, scope: ExcursionScope.NIVEL, targetId: `${selectedCycleId}|${selectedLevelId}` });
-                                                                    } else if (selectedCycleId) {
-                                                                        setFormData({ ...formData, scope: ExcursionScope.CICLO, targetId: selectedCycleId });
+                                                                }
+                                                            });
+                                                            setFormData(prev => ({ ...prev, scope: ExcursionScope.CLASE, targetId: myClass.id, estimatedStudents: classStudents.length }));
+                                                        } else if (scope === ExcursionScope.NIVEL) {
+                                                            setSelectedCycleId(myClass.cycleId);
+                                                            setSelectedLevelId(myLevel || '');
+                                                            const nivelClassIds = levelClasses.map(c => c.id);
+                                                            const nivelStudents = db.getStudents().filter(s => nivelClassIds.includes(s.classId)).length;
+                                                            setFormData(prev => ({ ...prev, scope: ExcursionScope.NIVEL, targetId: `${myClass.cycleId}|${myLevel}`, estimatedStudents: nivelStudents || prev.estimatedStudents }));
+                                                        } else if (scope === ExcursionScope.CICLO) {
+                                                            setSelectedCycleId(myClass.cycleId);
+                                                            setSelectedLevelId('');
+                                                            const cycleClassIds = classesList.filter(c => c.cycleId === myClass.cycleId).map(c => c.id);
+                                                            const cycleStudents = db.getStudents().filter(s => cycleClassIds.includes(s.classId)).length;
+                                                            setFormData(prev => ({ ...prev, scope: ExcursionScope.CICLO, targetId: myClass.cycleId, estimatedStudents: cycleStudents || prev.estimatedStudents }));
+                                                        }
+                                                    };
+
+                                                    return (
+                                                        <div className="space-y-2">
+                                                            {/* Mi clase */}
+                                                            <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition ${formData.scope === ExcursionScope.CLASE ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-white/10 hover:bg-white/50 dark:hover:bg-white/5'}`}>
+                                                                <input
+                                                                    type="radio"
+                                                                    name="tutorScope"
+                                                                    checked={formData.scope === ExcursionScope.CLASE}
+                                                                    onChange={() => handleTutorScope(ExcursionScope.CLASE)}
+                                                                    className="accent-blue-600"
+                                                                    disabled={isFieldDisabled('scope')}
+                                                                />
+                                                                <div>
+                                                                    <span className="font-medium text-gray-800 dark:text-white">Mi clase</span>
+                                                                    <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">({myClass.name})</span>
+                                                                </div>
+                                                            </label>
+
+                                                            {/* Mi nivel — solo si tiene sentido */}
+                                                            {showNivel && (
+                                                                <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition ${formData.scope === ExcursionScope.NIVEL ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-white/10 hover:bg-white/50 dark:hover:bg-white/5'}`}>
+                                                                    <input
+                                                                        type="radio"
+                                                                        name="tutorScope"
+                                                                        checked={formData.scope === ExcursionScope.NIVEL}
+                                                                        onChange={() => handleTutorScope(ExcursionScope.NIVEL)}
+                                                                        className="accent-blue-600"
+                                                                        disabled={isFieldDisabled('scope')}
+                                                                    />
+                                                                    <div>
+                                                                        <span className="font-medium text-gray-800 dark:text-white">Mi nivel</span>
+                                                                        <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">({myLevel}º {myCycle?.name || ''})</span>
+                                                                    </div>
+                                                                </label>
+                                                            )}
+
+                                                            {/* Mi ciclo */}
+                                                            <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition ${formData.scope === ExcursionScope.CICLO ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-white/10 hover:bg-white/50 dark:hover:bg-white/5'}`}>
+                                                                <input
+                                                                    type="radio"
+                                                                    name="tutorScope"
+                                                                    checked={formData.scope === ExcursionScope.CICLO}
+                                                                    onChange={() => handleTutorScope(ExcursionScope.CICLO)}
+                                                                    className="accent-blue-600"
+                                                                    disabled={isFieldDisabled('scope')}
+                                                                />
+                                                                <div>
+                                                                    <span className="font-medium text-gray-800 dark:text-white">Mi ciclo</span>
+                                                                    <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">({myCycle?.name || ''})</span>
+                                                                </div>
+                                                            </label>
+                                                        </div>
+                                                    );
+                                                })() : (
+                                                    /* DIRECCION/ADMIN/Coordinator: Dropdowns en cascada */
+                                                    <div className="space-y-3">
+                                                        {/* Ciclo */}
+                                                        <div>
+                                                            <label className="text-xs text-gray-500 font-semibold uppercase">Ciclo</label>
+                                                            <select
+                                                                className="input-field mt-1"
+                                                                value={selectedCycleId}
+                                                                onChange={e => {
+                                                                    const cId = e.target.value;
+                                                                    setSelectedCycleId(cId);
+                                                                    setSelectedLevelId('');
+                                                                    if (cId) {
+                                                                        setFormData({ ...formData, scope: ExcursionScope.CICLO, targetId: cId });
                                                                     } else {
                                                                         setFormData({ ...formData, scope: ExcursionScope.GLOBAL, targetId: '' });
                                                                     }
+                                                                }}
+                                                            >
+                                                                {(user?.role !== UserRole.TUTOR || coordinatorMode) && (
+                                                                    <option value="">-- Todos los Ciclos --</option>
+                                                                )}
+                                                                {cyclesList
+                                                                    .filter(c => user?.role !== UserRole.TUTOR || (coordinatorMode && c.id === user.coordinatorCycleId))
+                                                                    .map(c => (
+                                                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                                                    ))}
+                                                            </select>
+                                                        </div>
+                                                        {/* Nivel — solo visible cuando hay ciclo seleccionado */}
+                                                        {selectedCycleId && (() => {
+                                                            const levelsInCycle = [...new Set(
+                                                                classesList
+                                                                    .filter(c => c.cycleId === selectedCycleId && c.level)
+                                                                    .map(c => c.level!)
+                                                            )].sort();
+                                                            if (levelsInCycle.length === 0) return null;
+                                                            return (
+                                                                <div>
+                                                                    <label className="text-xs text-gray-500 font-semibold uppercase">Nivel</label>
+                                                                    <select
+                                                                        className="input-field mt-1"
+                                                                        value={selectedLevelId}
+                                                                        onChange={e => {
+                                                                            const lvl = e.target.value;
+                                                                            setSelectedLevelId(lvl);
+                                                                            if (lvl) {
+                                                                                setFormData({ ...formData, scope: ExcursionScope.NIVEL, targetId: `${selectedCycleId}|${lvl}` });
+                                                                                const nivelClasses = classesList.filter(c => c.cycleId === selectedCycleId && c.level === lvl).map(c => c.id);
+                                                                                const nivelStudents = db.getStudents().filter(s => nivelClasses.includes(s.classId)).length;
+                                                                                if (nivelStudents > 0) setFormData(prev => ({ ...prev, scope: ExcursionScope.NIVEL, targetId: `${selectedCycleId}|${lvl}`, estimatedStudents: nivelStudents }));
+                                                                            } else {
+                                                                                setFormData({ ...formData, scope: ExcursionScope.CICLO, targetId: selectedCycleId });
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        <option value="">-- Todo el ciclo --</option>
+                                                                        {levelsInCycle.map(lvl => (
+                                                                            <option key={lvl} value={lvl}>{lvl}º</option>
+                                                                        ))}
+                                                                    </select>
+                                                                </div>
+                                                            );
+                                                        })()}
+                                                        {/* Clase */}
+                                                        <div>
+                                                            <label className="text-xs text-gray-500 font-semibold uppercase">Clase</label>
+                                                            <select
+                                                                className="input-field mt-1"
+                                                                value={formData.scope === ExcursionScope.CLASE ? formData.targetId : ''}
+                                                                onChange={async (e) => {
+                                                                    const clId = e.target.value;
+                                                                    if (clId) {
+                                                                        setFormData({ ...formData, scope: ExcursionScope.CLASE, targetId: clId });
+                                                                        const proxyStudents = await db.fetchProxyStudents();
+                                                                        const classStudents = proxyStudents.filter((s: any) => s.classId === clId);
+                                                                        classStudents.forEach((s: any) => {
+                                                                            const exists = db.getStudents().find(ls => ls.id === s.id);
+                                                                            if (!exists) {
+                                                                                db.addStudent({
+                                                                                    id: s.id,
+                                                                                    name: `${s.name} ${s.surnames || ''}`.trim(),
+                                                                                    classId: s.classId
+                                                                                });
+                                                                            }
+                                                                        });
+                                                                        setFormData(prev => ({ ...prev, estimatedStudents: classStudents.length }));
+                                                                    } else {
+                                                                        if (selectedLevelId) {
+                                                                            setFormData({ ...formData, scope: ExcursionScope.NIVEL, targetId: `${selectedCycleId}|${selectedLevelId}` });
+                                                                        } else if (selectedCycleId) {
+                                                                            setFormData({ ...formData, scope: ExcursionScope.CICLO, targetId: selectedCycleId });
+                                                                        } else {
+                                                                            setFormData({ ...formData, scope: ExcursionScope.GLOBAL, targetId: '' });
+                                                                        }
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <option value="">{selectedLevelId ? `Todo el nivel ${selectedLevelId}º` : selectedCycleId ? 'Todo el ciclo' : '--'}</option>
+                                                                {classesList
+                                                                    .filter(c => !selectedCycleId || c.cycleId === selectedCycleId)
+                                                                    .filter(c => !selectedLevelId || c.level === selectedLevelId)
+                                                                    .map(c => (
+                                                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                                                    ))
                                                                 }
-                                                            }}
-                                                        >
-                                                            <option value="">{selectedLevelId ? `Todo el nivel ${selectedLevelId}º` : selectedCycleId ? 'Todo el ciclo' : '--'}</option>
-                                                            {classesList
-                                                                .filter(c => !selectedCycleId || c.cycleId === selectedCycleId)
-                                                                .filter(c => !selectedLevelId || c.level === selectedLevelId)
-                                                                .filter(c => user?.role !== UserRole.TUTOR || c.id === currentUser?.classId)
-                                                                .map(c => (
-                                                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                                                ))
-                                                            }
-                                                        </select>
+                                                            </select>
+                                                        </div>
                                                     </div>
-                                                </div>
+                                                )}
                                             </div>
                                         </div>
 
