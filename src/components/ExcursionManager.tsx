@@ -1177,40 +1177,63 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                         )}
                     </div>
                 </div>
-                <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                    {excursions.map(ex => {
-                        const isPast = new Date(ex.dateEnd) < new Date();
-                        const isCancelled = ex.status === 'CANCELLED';
-                        const isPostponed = ex.status === 'POSTPONED';
+                <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                    {(() => {
+                        const now = new Date();
+                        const pending = excursions.filter(ex => new Date(ex.dateEnd) >= now);
+                        const done = excursions.filter(ex => new Date(ex.dateEnd) < now);
 
-                        let titleStyle = 'text-gray-800 dark:text-gray-200';
-                        if (isCancelled) titleStyle = 'text-red-500 line-through';
-                        else if (isPostponed) titleStyle = 'text-yellow-600';
-                        else if (isPast) titleStyle = 'text-gray-400 line-through decoration-gray-400';
+                        const renderItem = (ex: Excursion) => {
+                            const isPast = new Date(ex.dateEnd) < now;
+                            const isCancelled = ex.status === 'CANCELLED';
+                            const isPostponed = ex.status === 'POSTPONED';
+
+                            let titleStyle = 'text-gray-800 dark:text-gray-200';
+                            if (isCancelled) titleStyle = 'text-red-500 line-through';
+                            else if (isPostponed) titleStyle = 'text-yellow-600';
+                            else if (isPast) titleStyle = 'text-gray-400';
+
+                            return (
+                                <div
+                                    key={ex.id}
+                                    onClick={() => handleSelect(ex)}
+                                    className={`p-3 rounded-xl cursor-pointer transition border-l-4 ${selectedExcursion?.id === ex.id ? 'border-l-blue-500 bg-blue-50 dark:bg-blue-500/20' : 'border-l-transparent hover:bg-white/50 dark:hover:bg-white/5'}`}
+                                >
+                                    <div className="flex justify-between items-start">
+                                        <h3 className={`font-semibold truncate ${titleStyle}`}>{ex.title}</h3>
+                                        {ex.status && ex.status !== 'ACTIVE' && (
+                                            <span className={`text-[10px] px-1 rounded border uppercase ${isCancelled ? 'border-red-200 bg-red-50 text-red-500' : 'border-yellow-200 bg-yellow-50 text-yellow-600'}`}>
+                                                {ex.status === 'CANCELLED' ? 'Anulada' : 'Aplazada'}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="flex justify-between items-center mt-1">
+                                        <span className={`text-xs ${isPast ? 'text-gray-300' : 'text-gray-500'}`}>{new Date(ex.dateStart).toLocaleDateString()}</span>
+                                        <span className={`text-xs px-1 rounded truncate max-w-[80px] ${isPast ? 'bg-gray-100 text-gray-400' : 'bg-gray-200 text-gray-700'}`}>
+                                            {getScopeLabel(ex.scope, ex.targetId)}
+                                        </span>
+                                    </div>
+                                </div>
+                            );
+                        };
 
                         return (
-                            <div
-                                key={ex.id}
-                                onClick={() => handleSelect(ex)}
-                                className={`p-3 rounded-xl cursor-pointer transition border-l-4 ${selectedExcursion?.id === ex.id ? 'border-l-blue-500 bg-blue-50 dark:bg-blue-500/20' : 'border-l-transparent hover:bg-white/50 dark:hover:bg-white/5'}`}
-                            >
-                                <div className="flex justify-between items-start">
-                                    <h3 className={`font-semibold truncate ${titleStyle}`}>{ex.title}</h3>
-                                    {ex.status && ex.status !== 'ACTIVE' && (
-                                        <span className={`text-[10px] px-1 rounded border uppercase ${isCancelled ? 'border-red-200 bg-red-50 text-red-500' : 'border-yellow-200 bg-yellow-50 text-yellow-600'}`}>
-                                            {ex.status === 'CANCELLED' ? 'Anulada' : 'Aplazada'}
-                                        </span>
+                            <>
+                                <div>
+                                    <p className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 px-2 py-1.5 tracking-wider">Pendientes</p>
+                                    {pending.length > 0 ? pending.map(renderItem) : (
+                                        <p className="text-xs text-gray-400 px-3 py-2">No hay excursiones pendientes</p>
                                     )}
                                 </div>
-                                <div className="flex justify-between items-center mt-1">
-                                    <span className={`text-xs ${isPast ? 'text-gray-300' : 'text-gray-500'}`}>{new Date(ex.dateStart).toLocaleDateString()}</span>
-                                    <span className={`text-xs px-1 rounded truncate max-w-[80px] ${isPast ? 'bg-gray-100 text-gray-400' : 'bg-gray-200 text-gray-700'}`}>
-                                        {getScopeLabel(ex.scope, ex.targetId)}
-                                    </span>
-                                </div>
-                            </div>
+                                {done.length > 0 && (
+                                    <div className="mt-2">
+                                        <p className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 px-2 py-1.5 tracking-wider">Realizadas</p>
+                                        {done.map(renderItem)}
+                                    </div>
+                                )}
+                            </>
                         );
-                    })}
+                    })()}
                 </div>
             </div>
 
