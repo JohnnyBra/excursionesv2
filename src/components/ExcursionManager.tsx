@@ -1536,7 +1536,6 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                                         <select
                                                             className="input-field mt-1"
                                                             value={selectedCycleId}
-                                                            disabled={user?.role === UserRole.TUTOR && !selectedCycleId}
                                                             onChange={e => {
                                                                 const cId = e.target.value;
                                                                 setSelectedCycleId(cId);
@@ -1548,7 +1547,9 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                                                 }
                                                             }}
                                                         >
-                                                            <option value="">-- Todos los Ciclos --</option>
+                                                            {user?.role !== UserRole.TUTOR && (
+                                                                <option value="">-- Todos los Ciclos --</option>
+                                                            )}
                                                             {cyclesList
                                                                 .filter(c => user?.role !== UserRole.TUTOR || c.id === selectedCycleId)
                                                                 .map(c => (
@@ -1602,7 +1603,6 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                                         <select
                                                             className="input-field mt-1"
                                                             value={formData.scope === ExcursionScope.CLASE ? formData.targetId : ''}
-                                                            disabled={user?.role === UserRole.TUTOR && !selectedCycleId}
                                                             onChange={async (e) => {
                                                                 const clId = e.target.value;
                                                                 if (clId) {
