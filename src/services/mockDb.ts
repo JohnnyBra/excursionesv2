@@ -36,6 +36,10 @@ const generateParticipationsForExcursion = (exc: Excursion) => {
   } else if (exc.scope === 'CICLO') {
     const cycleClasses = localState.classes.filter(c => c.cycleId === exc.targetId).map(c => c.id);
     targetStudents = localState.students.filter(s => cycleClasses.includes(s.classId));
+  } else if (exc.scope === 'NIVEL') {
+    const [cycleId, level] = (exc.targetId || '').split('|');
+    const nivelClasses = localState.classes.filter(c => c.cycleId === cycleId && c.level === level).map(c => c.id);
+    targetStudents = localState.students.filter(s => nivelClasses.includes(s.classId));
   } else if (exc.scope === 'CLASE') {
     targetStudents = localState.students.filter(s => s.classId === exc.targetId);
   }
@@ -155,7 +159,8 @@ const fetchAndLoadData = async () => {
             id: c.id,
             name: c.name,
             cycleId: `${c.stage}-${c.cycle}`.replace(/\s+/g, '-').toLowerCase(),
-            tutorId: '' // Se rellenará al procesar usuarios
+            tutorId: '', // Se rellenará al procesar usuarios
+            level: c.level || ''
           }));
 
           // Mergear Clases: Preservar locales
@@ -164,6 +169,10 @@ const fetchAndLoadData = async () => {
           mappedProxyClasses.forEach(pc => {
             if (!mergedClassesMap.has(pc.id)) {
               mergedClassesMap.set(pc.id, pc);
+            } else {
+              // Actualizar level desde Prisma (puede haber cambiado o faltado antes)
+              const existing = mergedClassesMap.get(pc.id)!;
+              mergedClassesMap.set(pc.id, { ...existing, level: pc.level || existing.level });
             }
           });
           localState.classes = Array.from(mergedClassesMap.values());

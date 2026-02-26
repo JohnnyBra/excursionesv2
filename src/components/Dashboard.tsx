@@ -40,6 +40,11 @@ export const Dashboard: React.FC = () => {
       const cycle = db.cycles.find(c => c.id === targetId);
       return `Ciclo: ${cycle?.name || 'Desconocido'}`;
     }
+    if (scope === ExcursionScope.NIVEL) {
+      const [cycleId, level] = (targetId || '').split('|');
+      const cycle = db.cycles.find(c => c.id === cycleId);
+      return `${level}º (${cycle?.name || ''})`;
+    }
     if (scope === ExcursionScope.CLASE) {
       const cls = db.classes.find(c => c.id === targetId);
       return `Clase: ${cls?.name || 'Desconocida'}`;
@@ -51,11 +56,14 @@ export const Dashboard: React.FC = () => {
   const relevantExcursions = excursions.filter(e => {
     if (user?.role === UserRole.DIRECCION || user?.role === UserRole.TESORERIA) return true;
     if (user?.role === UserRole.TUTOR) {
-      if (e.scope === 'GLOBAL') return true;
-      if (e.scope === 'CLASE' && e.targetId === currentUser?.classId) return true;
-      // Simplified cycle check
       const myClass = db.classes.find(c => c.id === currentUser?.classId);
+      if (e.scope === 'GLOBAL') return true;
       if (e.scope === 'CICLO' && e.targetId === myClass?.cycleId) return true;
+      if (e.scope === 'NIVEL') {
+        const [cycleId, level] = (e.targetId || '').split('|');
+        if (cycleId === myClass?.cycleId && level === myClass?.level) return true;
+      }
+      if (e.scope === 'CLASE' && e.targetId === currentUser?.classId) return true;
     }
     return false;
   }).sort((a, b) => new Date(a.dateStart).getTime() - new Date(b.dateStart).getTime());
