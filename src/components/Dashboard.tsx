@@ -60,6 +60,8 @@ export const Dashboard: React.FC = () => {
     return false;
   }).sort((a, b) => new Date(a.dateStart).getTime() - new Date(b.dateStart).getTime());
 
+  const upcomingExcursions = relevantExcursions.filter(e => new Date(e.dateEnd) >= new Date());
+
   const totalCollected = relevantExcursions.reduce((acc, exc) => {
     const parts = participations.filter(p => p.excursionId === exc.id && p.paid);
     return acc + parts.reduce((sum, p) => sum + p.amountPaid, 0);
@@ -132,38 +134,35 @@ export const Dashboard: React.FC = () => {
         <div className="glass p-6 rounded-2xl">
           <h3 className="text-lg font-bold mb-6 font-display text-gray-900 dark:text-white">Próximas Salidas</h3>
           <div className="space-y-3">
-            {relevantExcursions.map((ex, i) => {
-              const isPast = new Date(ex.dateEnd) < new Date();
-              return (
-                <div
-                  key={ex.id}
-                  onClick={() => handleExcursionClick(ex.id)}
-                  className={`flex items-center gap-4 p-4 hover:bg-white/50 dark:hover:bg-white/5 cursor-pointer rounded-xl transition-all duration-200 border border-transparent hover:border-gray-100 dark:hover:border-white/5 group ${isPast ? 'opacity-60 grayscale' : ''}`}
-                  style={{ animationDelay: `${i * 0.1}s` }}
-                >
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold shrink-0 transition-colors shadow-sm ${isPast ? 'bg-gray-100 dark:bg-white/5 text-gray-400' : 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 group-hover:scale-110 duration-300'}`}>
-                    {new Date(ex.dateStart).getDate()}/{new Date(ex.dateStart).getMonth() + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className={`font-bold font-display truncate ${isPast ? 'text-gray-500 line-through decoration-gray-400' : 'text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400'}`}>{ex.title}</h4>
-                    <div className="flex items-center gap-2 text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                      <span className="truncate">{ex.destination}</span>
-                      <span className="opacity-50">•</span>
-                      <span className={`font-medium ${isPast ? 'text-gray-400' : 'text-blue-600 dark:text-blue-400'}`}>{getScopeLabel(ex.scope, ex.targetId)}</span>
-                    </div>
-                  </div>
-                  <span className={`text-[10px] uppercase font-bold px-2.5 py-1 rounded-full ${isPast ? 'bg-gray-100 dark:bg-white/5 text-gray-400' : ex.scope === 'GLOBAL' ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300' : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400'}`}>
-                    {ex.scope}
-                  </span>
+            {upcomingExcursions.map((ex, i) => (
+              <div
+                key={ex.id}
+                onClick={() => handleExcursionClick(ex.id)}
+                className="flex items-center gap-4 p-4 hover:bg-white/50 dark:hover:bg-white/5 cursor-pointer rounded-xl transition-all duration-200 border border-transparent hover:border-gray-100 dark:hover:border-white/5 group"
+                style={{ animationDelay: `${i * 0.1}s` }}
+              >
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center font-bold shrink-0 transition-colors shadow-sm bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 group-hover:scale-110 duration-300">
+                  {new Date(ex.dateStart).getDate()}/{new Date(ex.dateStart).getMonth() + 1}
                 </div>
-              );
-            })}
-            {relevantExcursions.length === 0 && (
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-bold font-display truncate text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400">{ex.title}</h4>
+                  <div className="flex items-center gap-2 text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    <span className="truncate">{ex.destination}</span>
+                    <span className="opacity-50">•</span>
+                    <span className="font-medium text-blue-600 dark:text-blue-400">{getScopeLabel(ex.scope, ex.targetId)}</span>
+                  </div>
+                </div>
+                <span className={`text-[10px] uppercase font-bold px-2.5 py-1 rounded-full ${ex.scope === 'GLOBAL' ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300' : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-400'}`}>
+                  {ex.scope}
+                </span>
+              </div>
+            ))}
+            {upcomingExcursions.length === 0 && (
               <div className="text-center py-12">
                 <div className="w-16 h-16 bg-gray-50 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-300 dark:text-gray-600">
                   <Calendar size={32} />
                 </div>
-                <p className="text-gray-400 dark:text-gray-500 font-medium">No hay excursiones programadas</p>
+                <p className="text-gray-400 dark:text-gray-500 font-medium">No hay excursiones próximas</p>
               </div>
             )}
           </div>
