@@ -85,13 +85,15 @@ export const Dashboard: React.FC = () => {
 
   const totalCost = relevantExcursions.reduce((acc, exc) => acc + getExcursionCost(exc), 0);
 
-  const chartData = relevantExcursions.slice(0, 5).map(e => ({
-    name: e.title.substring(0, 15) + '...',
-    cost: getExcursionCost(e),
-    collected: participations
-      .filter(p => p.excursionId === e.id && p.paid)
-      .reduce((sum, p) => sum + p.amountPaid, 0)
-  }));
+  const chartData = relevantExcursions
+    .map(e => ({
+      name: e.title.length > 12 ? e.title.substring(0, 12) + '…' : e.title,
+      cost: getExcursionCost(e),
+      collected: participations
+        .filter(p => p.excursionId === e.id && p.paid)
+        .reduce((sum, p) => sum + p.amountPaid, 0)
+    }))
+    .filter(d => d.cost > 0);
 
   const handleExcursionClick = (id: string) => {
     // Navegar pasando el ID en el estado para que el manager lo abra
@@ -183,27 +185,48 @@ export const Dashboard: React.FC = () => {
         </div>
 
         <div className="glass p-6 rounded-2xl">
-          <h3 className="text-lg font-bold mb-6 font-display text-gray-900 dark:text-white">Balance Financiero</h3>
-          <div className="h-80 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(156, 163, 175, 0.2)" />
-                <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} tick={{ fill: '#9ca3af' }} interval={0} />
-                <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => `${val}€`} tick={{ fill: '#9ca3af' }} />
-                <Tooltip
-                  cursor={{ fill: 'rgba(156, 163, 175, 0.1)' }}
-                  contentStyle={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                    borderRadius: '12px',
-                    border: 'none',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                  }}
-                />
-                <Bar dataKey="collected" name="Recaudado" fill="#10B981" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="cost" name="Coste" fill="#EF4444" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-bold font-display text-gray-900 dark:text-white">Balance Financiero</h3>
+            {chartData.length > 0 && (
+              <span className="text-xs text-gray-400 dark:text-gray-500">{chartData.length} excursión{chartData.length !== 1 ? 'es' : ''}</span>
+            )}
           </div>
+          {chartData.length === 0 ? (
+            <div className="h-72 flex items-center justify-center text-gray-400 dark:text-gray-500 text-sm">
+              No hay excursiones con coste registrado
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <div style={{ minWidth: `${Math.max(300, chartData.length * 90)}px`, height: '300px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: chartData.length > 5 ? 40 : 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(156, 163, 175, 0.2)" />
+                    <XAxis
+                      dataKey="name"
+                      fontSize={11}
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fill: '#9ca3af', ...(chartData.length > 5 ? { textAnchor: 'end' } : {}) }}
+                      angle={chartData.length > 5 ? -35 : 0}
+                      interval={0}
+                    />
+                    <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => `${val}€`} tick={{ fill: '#9ca3af' }} />
+                    <Tooltip
+                      cursor={{ fill: 'rgba(156, 163, 175, 0.1)' }}
+                      contentStyle={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                        borderRadius: '12px',
+                        border: 'none',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                      }}
+                    />
+                    <Bar dataKey="collected" name="Recaudado" fill="#10B981" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="cost" name="Coste" fill="#EF4444" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
