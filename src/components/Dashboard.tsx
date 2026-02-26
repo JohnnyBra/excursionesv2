@@ -68,12 +68,12 @@ export const Dashboard: React.FC = () => {
   }, 0);
 
   const totalCost = relevantExcursions.reduce((acc, exc) => {
-    return acc + Number(exc.costBus) + Number(exc.costOther || 0) + Number(exc.costEntry);
+    return acc + Number(exc.costBus) + Number(exc.costOther || 0) + (Number(exc.costEntry) * Number(exc.estimatedStudents || 0));
   }, 0);
 
   const chartData = relevantExcursions.slice(0, 5).map(e => ({
     name: e.title.substring(0, 15) + '...',
-    cost: Number(e.costBus) + Number(e.costEntry),
+    cost: Number(e.costBus) + Number(e.costOther || 0) + (Number(e.costEntry) * Number(e.estimatedStudents || 0)),
     collected: participations
       .filter(p => p.excursionId === e.id && p.paid)
       .reduce((sum, p) => sum + p.amountPaid, 0)
