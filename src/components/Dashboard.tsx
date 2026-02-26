@@ -68,7 +68,7 @@ export const Dashboard: React.FC = () => {
   }, 0);
 
   const totalCost = relevantExcursions.reduce((acc, exc) => {
-    return acc + Number(exc.costBus) + Number(exc.costEntry); // Simplified cost logic
+    return acc + Number(exc.costBus) + Number(exc.costOther || 0) + Number(exc.costEntry);
   }, 0);
 
   const chartData = relevantExcursions.slice(0, 5).map(e => ({

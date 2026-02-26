@@ -439,6 +439,15 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
             const exists = excursions.find(e => e.id === formData.id);
             if (exists) {
                 db.updateExcursion(excursionToSave);
+
+                // Si el precio por alumno ha cambiado, sincronizar amountPaid de los ya pagados
+                if (exists.costGlobal !== excursionToSave.costGlobal) {
+                    const allParts = db.getParticipations();
+                    allParts
+                        .filter(p => p.excursionId === excursionToSave.id && p.paid)
+                        .forEach(p => db.updateParticipation({ ...p, amountPaid: excursionToSave.costGlobal }));
+                }
+
                 addToast('Guardado correctamente', 'success');
             } else {
                 db.addExcursion(excursionToSave);
@@ -1391,6 +1400,42 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                         <input type="number" disabled={isFieldDisabled('costGlobal')} className="w-full text-2xl font-bold text-green-700 p-2 border border-green-300 bg-green-50 rounded" value={formData.costGlobal ?? 0} onChange={e => setFormData({ ...formData, costGlobal: Number(e.target.value) })} />
                                     </div>
                                     {isEditing && <p className="text-xs text-gray-500 mt-2">* Tesorería puede modificar estos valores.</p>}
+
+                                    {/* Balance en vivo */}
+                                    {!isEditing && selectedExcursion && participants.length > 0 && (
+                                        (() => {
+                                            const price = selectedExcursion.costGlobal;
+                                            const paidCount = participants.filter(p => p.paid).length;
+                                            const totalCount = participants.length;
+                                            const collected = paidCount * price;
+                                            const pending = (totalCount - paidCount) * price;
+                                            const fixedCosts = (selectedExcursion.costBus || 0) + (selectedExcursion.costOther || 0);
+                                            const attendedCount = participants.filter(p => p.attended).length || paidCount;
+                                            const realCost = fixedCosts + (attendedCount * (selectedExcursion.costEntry || 0));
+                                            const balance = collected - realCost;
+                                            return (
+                                                <div className="mt-6 pt-5 border-t border-blue-200 grid grid-cols-2 gap-3">
+                                                    <div className="bg-white rounded-lg p-3 border border-blue-100">
+                                                        <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Recaudado</p>
+                                                        <p className="text-xl font-bold text-green-600">{collected.toFixed(2)}€</p>
+                                                        <p className="text-xs text-gray-400">{paidCount}/{totalCount} alumnos</p>
+                                                    </div>
+                                                    <div className="bg-white rounded-lg p-3 border border-blue-100">
+                                                        <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Pendiente</p>
+                                                        <p className="text-xl font-bold text-orange-500">{pending.toFixed(2)}€</p>
+                                                        <p className="text-xs text-gray-400">{totalCount - paidCount} sin pagar</p>
+                                                    </div>
+                                                    {price > 0 && (
+                                                        <div className="col-span-2 bg-white rounded-lg p-3 border border-blue-100">
+                                                            <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Balance (Recaudado − Coste Real)</p>
+                                                            <p className={`text-xl font-bold ${balance >= 0 ? 'text-green-600' : 'text-red-500'}`}>{balance >= 0 ? '+' : ''}{balance.toFixed(2)}€</p>
+                                                            <p className="text-xs text-gray-400">Coste real: {realCost.toFixed(2)}€</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()
+                                    )}
 
                                     {canEditBudget() && (
                                         <div className="mt-6 flex justify-end gap-2 pt-4 border-t border-gray-100">
