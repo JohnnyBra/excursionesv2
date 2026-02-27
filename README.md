@@ -1,10 +1,118 @@
-# SchoolTripManager Pro 2.1
+# Excursiones — Gestión de Salidas Escolares y Tesorería
+
+Plataforma integral para planificar, gestionar y contabilizar las salidas y excursiones del Colegio La Hispanidad. Permite gestionar autorizaciones, pagos, asistencia y el balance económico del centro. Forma parte de la Suite Educativa La Hispanidad.
+
+> **Acceso:** Profesorado, coordinación, tesorería y dirección. Autenticación compartida con PrismaEdu (SSO).
+
+---
+
+## 🚀 Funcionalidades por Público
+
+### 👨‍🏫 Profesorado
+
+- **Dashboard**
+  - Ver las próximas salidas visibles para su clase según el ámbito (global, ciclo, nivel o clase propia)
+  - Indicadores de coste, participación y balance por excursión
+
+- **Crear excursiones** (dentro del ámbito asignado)
+  - **CLASE:** Solo para su propia clase
+  - **NIVEL:** Para todas las clases del mismo curso en su ciclo (ej. todos los 5º)
+  - **CICLO:** Para todas las clases de su ciclo
+  - Campos: título, descripción, destino, fechas, ropa, transporte y desglose de costes
+
+- **Gestión de participantes**
+  - Tabla con un alumno por fila:
+    - Autorización familiar (checkbox)
+    - Pago (visible solo si la excursión tiene coste)
+    - Asistencia real (visible solo a partir de la fecha de la salida)
+  - Acciones masivas: marcar todos autorizados · todos pagados · todos asistentes
+
+- **Resumen financiero**
+  - Ver importe recaudado, pendiente y balance de la excursión propia
+
+---
+
+### 🏫 Dirección / Administración
+
+Todo lo del profesorado, más:
+
+- **Excursiones de cualquier ámbito** (GLOBAL, CICLO, NIVEL, CLASE)
+- **Editar y eliminar cualquier excursión** del sistema, independientemente del creador
+- **Panel de tesorería completo**
+  - Posición financiera global del colegio en todas las salidas
+  - Exportación de informe de balance a PDF (jsPDF)
+- **Gestión de usuarios del sistema**
+  - Alta y baja de docentes, coordinadores y personal de tesorería
+  - Asignación de tutores a clases
+  - Gestión de coordinadores por ciclo
+- **Configuración del sistema**
+  - Configuración del curso escolar, ciclos y niveles
+- **Copias de seguridad**
+  - Descargar y restaurar `backend/database.json` desde el panel de administración
+
+---
+
+### 💰 Tesorería
+
+- Ver la lista completa de excursiones y su estado
+- Registrar y editar pagos de participantes en todas las excursiones
+- Consultar el balance económico global
+- Exportar informes financieros a PDF
+- Sin acceso a la creación ni edición de excursiones
+
+---
+
+### 📋 Coordinación
+
+- Ver y gestionar excursiones de su ciclo asignado
+- Crear excursiones de ámbito **CICLO** dentro del ciclo propio
+- Sin acceso a excursiones de ámbito global
+
+---
+
+## 📐 Sistema de Ámbitos
+
+| Ámbito | targetId | Destinatarios |
+|--------|----------|---------------|
+| `GLOBAL` | _(vacío)_ | Todo el centro |
+| `CICLO` | `cycleId` | Todo un ciclo (ej. Primaria Tercer Ciclo) |
+| `NIVEL` | `"{cycleId}\|{level}"` | Todas las clases de un curso (ej. 5ºA y 5ºB) |
+| `CLASE` | `classId` | Una sola clase |
+
+---
+
+## 💰 Modelo Financiero
+
+| Campo | Descripción |
+|-------|-------------|
+| `costBus` | Coste total del autobús (fijo, compartido) |
+| `costOther` | Otros costes fijos (parking, materiales…) |
+| `costEntry` | Precio de entrada **por alumno** |
+| `costGlobal` | Precio final por alumno (calculado automáticamente) |
+
+**Fórmula:** `costGlobal = ⌈(costBus + costOther) / estimatedStudents⌉ + costEntry`
+
+**Coste real de excursiones pasadas:** `costBus + costOther + (costEntry × alumnos_asistentes)`
+
+---
+
+## ⚙️ Características Técnicas
+
+- **Frontend:** React 19 + TypeScript + Vite, React Router (HashRouter), Recharts
+- **Backend:** Node.js/Express (ESM), Socket.IO
+- **PDF:** jsPDF + jspdf-autotable (generación en cliente)
+- **Tiempo real:** Socket.IO — evento `db_update` propagado a todos los clientes en cada cambio
+- **Autenticación:** PIN proxy a PrismaEdu + SSO compartido (`BIBLIO_SSO_TOKEN`)
+- **Base de datos:** Archivo JSON (`backend/database.json`) con copias de seguridad automáticas
+- **Despliegue:** PM2 en Ubuntu/Debian (frontend en :3006, backend en :3005)
+
+---
 
 **Creado por Javier Barrero**
 
-Plataforma integral para la gestión de excursiones escolares. Esta versión utiliza una arquitectura **Cliente-Servidor ligera**:
-1.  **Frontend:** React + Vite (Puerto 3006).
-2.  **Backend:** Node.js + Archivos JSON (Puerto 3005).
+Arquitectura Cliente-Servidor ligera:
+1.  **Frontend:** React + Vite (Puerto 3006)
+2.  **Backend:** Node.js + Archivos JSON (Puerto 3005)
 
 Los datos son persistentes y se guardan en el servidor (`backend/database.json`), permitiendo el acceso desde múltiples dispositivos en la misma red.
 
