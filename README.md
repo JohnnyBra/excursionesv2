@@ -6,6 +6,22 @@ Plataforma integral para planificar, gestionar y contabilizar las salidas y excu
 
 ---
 
+## 📸 Capturas de Pantalla
+
+| Login | Dashboard — Próximas Salidas |
+|:---:|:---:|
+| ![Login](docs/screenshots/01-login.png) | ![Dashboard](docs/screenshots/02-dashboard-proximas-salidas.png) |
+
+| Lista de Excursiones | Detalle — Tabla de Participantes |
+|:---:|:---:|
+| ![Lista](docs/screenshots/03-lista-excursiones.png) | ![Detalle participantes](docs/screenshots/04-detalle-excursion-participantes.png) |
+
+| Tutor — Mis Excursiones | Tesorería — Contabilidad |
+|:---:|:---:|
+| ![Tutor](docs/screenshots/05-tutor-mis-excursiones.png) | ![Tesorería](docs/screenshots/06-tesoreria-contabilidad.png) |
+
+---
+
 ## 🚀 Funcionalidades por Público
 
 ### 👨‍🏫 Profesorado
