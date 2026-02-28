@@ -123,14 +123,14 @@ export const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Excursiones Activas"
-          value={relevantExcursions.length}
+          value={upcomingExcursions.length}
           icon={Calendar}
           color="bg-gradient-to-br from-blue-500 to-blue-600"
           onClick={() => navigate('/excursions')}
         />
         <StatCard
           title="Participantes Totales"
-          value={participations.filter(p => relevantExcursions.some(e => e.id === p.excursionId)).length}
+          value={new Set(participations.filter(p => relevantExcursions.some(e => e.id === p.excursionId)).map(p => p.studentId)).size}
           icon={Users}
           color="bg-gradient-to-br from-purple-500 to-purple-600"
         />
