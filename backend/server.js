@@ -449,10 +449,10 @@ const fetchPrismaData = async () => {
     const rawUsers = usersRes.data || [];
     const users = rawUsers.map(u => {
       let role = u.role || 'TUTOR';
-      const username = u.username || u.email.split('@')[0];
+      const username = u.username || (u.email ? u.email.split('@')[0] : String(u.id));
 
       // Fix: Detectar Tesorería por nombre de usuario
-      if (username.toLowerCase().includes('tesoreria')) {
+      if (username && typeof username === 'string' && username.toLowerCase().includes('tesoreria')) {
         role = 'TESORERIA';
       }
 
