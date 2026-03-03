@@ -268,7 +268,8 @@ app.post('/api/proxy/login', async (req, res) => {
         path: '/',
         httpOnly: true,
         secure: true,
-        sameSite: 'Lax'
+        sameSite: 'Lax',
+        maxAge: 8 * 60 * 60 * 1000
       });
     }
 
