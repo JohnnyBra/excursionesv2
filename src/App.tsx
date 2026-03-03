@@ -374,13 +374,17 @@ const AppContent = () => {
             return;
           }
         }
+        // El servidor respondió (401 u otro): sesión inválida → forzar login
+        localStorage.removeItem('auth_user');
+        setLoading(false);
+        return;
       } catch (e) {
-        // Network error or SSO not available — fall through to localStorage
+        // Error de red: usar datos locales como fallback temporal
+        const stored = localStorage.getItem('auth_user');
+        if (stored) setUser(JSON.parse(stored));
+        setLoading(false);
+        return;
       }
-
-      // 3. Fallback: check localStorage
-      const stored = localStorage.getItem('auth_user');
-      if (stored) setUser(JSON.parse(stored));
 
       setLoading(false);
     };
