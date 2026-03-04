@@ -349,6 +349,7 @@ const AppContent = () => {
         if (ssoRes.ok) {
           const ssoData = await ssoRes.json();
           if (ssoData.success && ssoData.user) {
+            localStorage.removeItem('excursiones_theme_manual');
             const ssoUser: User = {
               id: ssoData.user.id,
               username: ssoData.user.username || ssoData.user.email || ssoData.user.id,
@@ -431,6 +432,7 @@ const AppContent = () => {
         db.updateUser(mergedUser);
       }
 
+      localStorage.removeItem('excursiones_theme_manual');
       setUser(mergedUser);
       localStorage.setItem('auth_user', JSON.stringify(mergedUser));
       addToast(`Bienvenido/a ${userMapped.name}`, 'success');
@@ -453,6 +455,7 @@ const AppContent = () => {
         password: ''
       };
 
+      localStorage.removeItem('excursiones_theme_manual');
       setUser(userMapped);
       localStorage.setItem('auth_user', JSON.stringify(userMapped));
       addToast(`Bienvenido/a ${userMapped.name}`, 'success');
