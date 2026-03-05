@@ -159,12 +159,15 @@ Vite proxies `/api/*` requests to `http://localhost:3005` during development (co
 
 ## Unified Header
 
-`src/components/Layout.tsx` implements the unified header design. The **mobile header** (`md:hidden`) uses the `.header-glass` class (defined in `src/styles/theme.css`) with:
+`src/components/Layout.tsx` implements a single unified `<header>` for both mobile and desktop using the `.header-glass` class (defined in `src/styles/theme.css`):
 - **Logo**: `h-10` with `dark:brightness-0 dark:invert` for theme adaptation
+- **Navigation tabs** (desktop only, `hidden md:flex`): Dashboard, Excursiones, Usuarios (DIRECCION), Tesorería (TESORERIA/DIRECCION), Ajustes — active tab styled with `bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400`
+- **User badge** (desktop only): avatar initial + name + role
 - **3-button theme toggle**: Sun / Monitor / Moon (Light / System / Dark), uses `useTheme()` from `src/context/ThemeContext.tsx`, active state styled with `text-[#234B6E]`
-- **Prisma link**: SVG icon (4 squares, top-right filled `#3b82f6`), links to `https://prisma.bibliohispa.es`
+- **Logout button** (desktop only): red-tinted pill button
+- **Prisma link**: SVG icon (4 squares, top-right filled `#3b82f6`), links to `https://prisma.bibliohispa.es` — always visible, last item on the right
 
-The **desktop sidebar** (`hidden md:flex`) is independent — it has its own Prisma link, navigation items, user info, and logout button. It does NOT use the unified header pattern; only the mobile header was unified.
+Mobile navigation is handled by `src/components/BottomNav.tsx`.
 
 The `.header-glass` class uses `rgba(255,255,255,0.45)` background with `backdrop-filter: blur(24px) saturate(1.6)`, with a `.dark` variant. Theme is managed via `ThemeContext` with `useTheme()` hook supporting `'light' | 'dark' | 'system'`, toggling `.dark` class on `<html>`.
 
