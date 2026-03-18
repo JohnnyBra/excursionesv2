@@ -8,6 +8,7 @@ const { Server } = require('socket.io'); // Importar Socket.io
 const axios = require('axios'); // Importar Axios
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const app = express();
@@ -136,6 +137,15 @@ const writeDb = (data) => {
   return writeQueue;
 };
 
+// --- Rate Limiting ---
+const loginLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  max: 10,
+  message: { error: 'Demasiados intentos de login. Espera un momento.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // --- API Endpoints ---
 
 // 1. Obtener todo (Initial Load)
@@ -219,17 +229,21 @@ app.delete('/api/sync/:entity/:id', async (req, res) => {
 // 4. Restaurar Backup Completo
 app.post('/api/restore', async (req, res) => {
   const fullData = req.body;
-  if (fullData.users && fullData.excursions) {
-    await writeDb(fullData);
-
-    // EMITIR EVENTO SOCKET (Full reload)
-    const sourceSocketId = req.headers['x-socket-id'];
-    io.emit('db_update', { entity: 'all', action: 'restore', sourceSocketId });
-
-    res.json({ success: true });
-  } else {
-    res.status(400).json({ error: "Formato inválido" });
+  const requiredArrays = ['users', 'excursions', 'participations', 'students', 'classes', 'cycles'];
+  const isValid = requiredArrays.every(key => Array.isArray(fullData[key]));
+  if (!isValid) {
+    return res.status(400).json({ error: "Formato de backup inválido: faltan campos obligatorios o no son arrays" });
   }
+  // Sanear: solo conservar las claves conocidas para evitar datos arbitrarios
+  const safeData = {};
+  requiredArrays.forEach(key => { safeData[key] = fullData[key]; });
+
+  await writeDb(safeData);
+
+  const sourceSocketId = req.headers['x-socket-id'];
+  io.emit('db_update', { entity: 'all', action: 'restore', sourceSocketId });
+
+  res.json({ success: true });
 });
 
 // --- PROXY ENDPOINTS (PRISMA EDU) ---
@@ -240,7 +254,7 @@ const prismaHeaders = {
 };
 
 // Login Proxy (Manual)
-app.post('/api/proxy/login', async (req, res) => {
+app.post('/api/proxy/login', loginLimiter, async (req, res) => {
   try {
     const { username, password } = req.body;
 

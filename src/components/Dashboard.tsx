@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useAuth } from '../App';
 import { db } from '../services/mockDb';
 import { UserRole, ExcursionScope } from '../types';
@@ -70,6 +70,12 @@ export const Dashboard: React.FC = () => {
 
   const upcomingExcursions = relevantExcursions.filter(e => new Date(e.dateEnd) >= new Date());
 
+  const relevantExcursionIds = useMemo(() => new Set(relevantExcursions.map(e => e.id)), [relevantExcursions]);
+  const uniqueStudentsCount = useMemo(() =>
+    new Set(participations.filter(p => relevantExcursionIds.has(p.excursionId)).map(p => p.studentId)).size,
+    [participations, relevantExcursionIds]
+  );
+
   // Para excursiones terminadas usa asistencia real; para pendientes usa estimación
   const getEntryStudentCount = (excId: string, estimatedStudents: number) => {
     const parts = participations.filter(p => p.excursionId === excId);
@@ -130,7 +136,7 @@ export const Dashboard: React.FC = () => {
         />
         <StatCard
           title="Participantes Totales"
-          value={new Set(participations.filter(p => relevantExcursions.some(e => e.id === p.excursionId)).map(p => p.studentId)).size}
+          value={uniqueStudentsCount}
           icon={Users}
           color="bg-gradient-to-br from-purple-500 to-purple-600"
         />

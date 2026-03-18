@@ -89,9 +89,9 @@ const apiCall = async (endpoint: string, method: string = 'GET', body?: any) => 
 };
 
 // --- Sync Functions ---
-const syncItem = (entity: string, item: any) => {
-  apiCall(`/sync/${entity}`, 'POST', item);
-  // Nota: No necesitamos notificar listeners aquí manualmente, 
+const syncItem = (entity: string, item: any): Promise<any> => {
+  return apiCall(`/sync/${entity}`, 'POST', item);
+  // Nota: No necesitamos notificar listeners aquí manualmente,
   // el socket nos devolverá el evento 'db_update' y recargará todo.
   // Sin embargo, para respuesta inmediata UI (Optimistic UI), ya actualizamos localState abajo.
 };
@@ -307,7 +307,7 @@ export const db = {
       if (res.success && proxyUser) {
         // 3. MERGE WITH LOCAL STATE: Preservar datos locales (Clase, Coordinación, Usuario simple)
         // Buscamos si ya conocemos a este usuario localmente para no perder sus asignaciones manuales
-        const localUser = localState.users.find(u => u.id === proxyUser.id || (u.email && u.email.toLowerCase() === proxyUser.email.toLowerCase()));
+        const localUser = localState.users.find(u => u.id === proxyUser.id || (u.email && proxyUser.email && u.email.toLowerCase() === proxyUser.email.toLowerCase()));
 
         if (localUser) {
           console.log(`✅ Merging proxy user [${proxyUser.username}] with local data...`);
@@ -560,12 +560,13 @@ export const db = {
     toDelete.forEach(p => deleteItem('participations', p.id));
   },
 
-  updateParticipation: (p: Participation) => {
+  updateParticipation: (p: Participation): Promise<any> => {
     const idx = localState.participations.findIndex(x => x.id === p.id);
     if (idx >= 0) {
       localState.participations[idx] = p;
-      syncItem('participations', p);
+      return syncItem('participations', p);
     }
+    return Promise.resolve();
   },
 
   // System

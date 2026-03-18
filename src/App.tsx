@@ -19,6 +19,7 @@ interface AuthContextType {
   logout: () => void;
   coordinatorMode: boolean;
   setCoordinatorMode: (mode: boolean) => void;
+  updateCurrentUser: (u: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -381,8 +382,12 @@ const AppContent = () => {
         return;
       } catch (e) {
         // Error de red: usar datos locales como fallback temporal
-        const stored = localStorage.getItem('auth_user');
-        if (stored) setUser(JSON.parse(stored));
+        try {
+          const stored = localStorage.getItem('auth_user');
+          if (stored) setUser(JSON.parse(stored));
+        } catch (_) {
+          localStorage.removeItem('auth_user');
+        }
         setLoading(false);
         return;
       }
@@ -470,6 +475,11 @@ const AppContent = () => {
     fetch('/api/auth/logout', { method: 'POST' }).catch(() => { });
   };
 
+  const updateCurrentUser = (u: User) => {
+    setUser(u);
+    localStorage.setItem('auth_user', JSON.stringify(u));
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 dark:bg-surface-900 gap-4">
@@ -480,7 +490,7 @@ const AppContent = () => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, loginWithGoogle, logout, coordinatorMode, setCoordinatorMode }}>
+    <AuthContext.Provider value={{ user, login, loginWithGoogle, logout, coordinatorMode, setCoordinatorMode, updateCurrentUser }}>
       <HashRouter>
         <Routes>
           <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />

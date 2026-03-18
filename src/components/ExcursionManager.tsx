@@ -170,9 +170,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
     // Update "is day of" state when selection changes
     useEffect(() => {
         if (selectedExcursion) {
-            const today = new Date().toISOString().slice(0, 10);
-            const start = selectedExcursion.dateStart.slice(0, 10);
-            setIsExcursionDayOrPast(today >= start);
+            setIsExcursionDayOrPast(new Date(selectedExcursion.dateStart).getTime() <= Date.now());
         } else {
             setIsExcursionDayOrPast(false);
         }
@@ -394,6 +392,10 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
 
     const handleInternalShare = (targetClass: ClassGroup) => {
         if (!selectedExcursion) return;
+        if (!targetClass.tutorId) {
+            addToast('Esta clase no tiene tutor asignado', 'error');
+            return;
+        }
 
         const sharedExcursion: Excursion = {
             ...selectedExcursion,
@@ -498,7 +500,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
         return false;
     };
 
-    const toggleParticipationStatus = (p: Participation, field: 'authSigned' | 'paid' | 'attended') => {
+    const toggleParticipationStatus = async (p: Participation, field: 'authSigned' | 'paid' | 'attended') => {
         if (!canEditStudent(p.studentId)) {
             addToast('Solo puedes gestionar alumnos de tu tutoría', 'error');
             return;
@@ -513,8 +515,15 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
             updated.amountPaid = 0;
             updated.paymentDate = undefined;
         }
-        db.updateParticipation(updated);
+        // Actualización optimista
         setParticipants(prev => prev.map(item => item.id === p.id ? updated : item));
+        try {
+            await db.updateParticipation(updated);
+        } catch (_) {
+            // Revertir si falla el guardado
+            setParticipants(prev => prev.map(item => item.id === p.id ? p : item));
+            addToast('Error al guardar. Inténtalo de nuevo.', 'error');
+        }
     };
 
     // --- REPORT GENERATION LOGIC ---
@@ -1071,7 +1080,11 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
             if (timePart === '09:00') endTime = '14:00';
             if (timePart === '08:00') endTime = '14:30';
 
-            updates.dateEnd = `${datePart}T${endTime}`;
+            const autoDateEnd = `${datePart}T${endTime}`;
+            // Solo actualizar dateEnd si quedaría antes del nuevo dateStart
+            if (!formData.dateEnd || formData.dateEnd < newVal) {
+                updates.dateEnd = autoDateEnd;
+            }
         }
         setFormData({ ...formData, ...updates });
     };
@@ -1786,7 +1799,7 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                                                         return (
                                                             <tr key={p.id} className="border-t border-white/10 hover:bg-white/5">
                                                                 <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">
-                                                                    {studentsMap[p.studentId]?.name}
+                                                                    {studentsMap[p.studentId]?.name || 'Alumno desconocido'}
                                                                     {!isEditable && <span className="ml-2 text-xs text-gray-500 border border-white/10 px-1 rounded">Otra clase</span>}
                                                                 </td>
                                                                 <td className={`px-4 py-3 text-center ${isEditable ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`} onClick={() => isEditable && toggleParticipationStatus(p, 'authSigned')}>

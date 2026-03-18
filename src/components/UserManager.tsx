@@ -55,7 +55,7 @@ const compareUsers = (a: User, b: User) => {
 };
 
 export const UserManager: React.FC = () => {
-    const { user } = useAuth();
+    const { user, updateCurrentUser } = useAuth();
     const { addToast } = useToast();
     const [activeTab, setActiveTab] = useState<'users' | 'classes' | 'students' | 'system'>('users');
 
@@ -101,30 +101,22 @@ export const UserManager: React.FC = () => {
         }
         const userToSave = { ...editingUser, password: editingUser.password || '123' } as User;
         
-        let needsReload = false;
-
         if (userToSave.id) {
             db.updateUser(userToSave);
             addToast('Usuario actualizado', 'success');
-            
-            // SI ESTAMOS EDITANDO AL USUARIO ACTUAL, ACTUALIZAMOS SESIÓN
+
+            // SI ESTAMOS EDITANDO AL USUARIO ACTUAL, ACTUALIZAMOS SESIÓN SIN RECARGAR
             if (userToSave.id === user.id) {
-                localStorage.setItem('auth_user', JSON.stringify(userToSave));
-                needsReload = true;
+                updateCurrentUser(userToSave);
             }
         } else {
             userToSave.id = crypto.randomUUID();
             db.addUser(userToSave);
             addToast('Usuario creado', 'success');
         }
-        
+
         setEditingUser(null);
         refreshData();
-
-        if (needsReload) {
-            // Forzar recarga para que el nombre cambie en la barra lateral
-            window.location.reload();
-        }
     };
 
     const handleDeleteUser = (id: string) => {
