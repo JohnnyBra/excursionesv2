@@ -175,3 +175,30 @@ The `.header-glass` class uses `rgba(255,255,255,0.45)` background with `backdro
 - The project uses ES modules (`"type": "module"` in package.json).
 - The backend uses CommonJS (`require`/`module.exports`).
 - Fonts: "Outfit" for headings, "Plus Jakarta Sans" for body text (loaded from Google Fonts in `index.html`).
+
+## Important Implementation Details
+
+### dotenv path
+`backend/server.js` loads `.env` from the **project root** (not from `backend/`):
+```js
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+```
+The `.env` file lives at `excursionesv2/.env`, not `excursionesv2/backend/.env`.
+
+### AuthContext — updateCurrentUser
+`App.tsx` exposes `updateCurrentUser(user: User)` through `AuthContext`. Use this instead of `window.location.reload()` when updating the current user's data (e.g. in `UserManager.tsx`). It updates React state and `localStorage` atomically without a full page reload.
+
+### Optimistic UI in toggleParticipationStatus
+`toggleParticipationStatus` in `ExcursionManager.tsx` is **async**. It updates the UI immediately and reverts the change if the server call fails. `db.updateParticipation()` returns a `Promise` — always `await` it when error handling matters.
+
+### syncItem returns Promise
+`syncItem()` in `mockDb.ts` returns the `apiCall` Promise. Methods that need error handling (like `updateParticipation`) should return and `await` it.
+
+### Rate limiting
+`/api/proxy/login` is protected with `express-rate-limit`: **10 requests per minute per IP**. Do not remove this when modifying the login endpoint.
+
+### /api/restore validation
+`POST /api/restore` validates that the body contains all required arrays (`users`, `excursions`, `participations`, `students`, `classes`, `cycles`) and strips any unknown keys before writing to disk.
+
+### Dashboard performance
+The "Participantes Totales" stat uses a pre-computed `Set` of relevant excursion IDs (`relevantExcursionIds`) to filter participations in O(n) instead of O(n²). Keep this pattern when modifying Dashboard stats.
