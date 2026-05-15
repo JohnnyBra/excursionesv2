@@ -503,79 +503,57 @@ const fetchPrismaData = async () => {
   }
 };
 
+const PRISMA_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+const runPrismaSync = async () => {
+  console.log('🔄 Sincronización con PrismaEdu iniciada...');
+  const prismaData = await fetchPrismaData();
+  const currentDb = readDb();
+
+  const cycleMap = new Map(currentDb.cycles.map(c => [c.id, c]));
+  prismaData.cycles.forEach(pc => {
+    if (!cycleMap.has(pc.id)) cycleMap.set(pc.id, pc);
+  });
+
+  const classMap = new Map(currentDb.classes.map(c => [c.id, c]));
+  prismaData.classes.forEach(pc => {
+    const existing = classMap.get(pc.id);
+    classMap.set(pc.id, existing ? { ...existing, ...pc } : pc);
+  });
+
+  const userMap = new Map(currentDb.users.map(u => [u.id, u]));
+  prismaData.users.forEach(pu => {
+    const existing = userMap.get(pu.id);
+    if (!existing || !existing.password) userMap.set(pu.id, pu);
+  });
+
+  const studentMap = new Map(currentDb.students.map(s => [s.id, s]));
+  prismaData.students.forEach(ps => studentMap.set(ps.id, ps));
+
+  const mergedUsers = Array.from(userMap.values());
+  const mergedClasses = Array.from(classMap.values());
+  const mergedStudents = Array.from(studentMap.values());
+
+  await writeDb({
+    ...currentDb,
+    cycles: Array.from(cycleMap.values()),
+    classes: mergedClasses,
+    users: mergedUsers,
+    students: mergedStudents
+  });
+  io.emit('db_update', { entity: 'all', action: 'import', sourceSocketId: null });
+
+  console.log(`✅ Sync PrismaEdu completado: ${mergedUsers.length} usuarios, ${mergedClasses.length} clases, ${mergedStudents.length} alumnos.`);
+  return { users: mergedUsers.length, classes: mergedClasses.length, students: mergedStudents.length };
+};
+
 app.post('/api/import/prisma', async (req, res) => {
   try {
-    const prismaData = await fetchPrismaData();
-    const currentDb = readDb();
-
-    // A) Ciclos
-    const cycleMap = new Map(currentDb.cycles.map(c => [c.id, c]));
-    prismaData.cycles.forEach(pc => {
-      if (!cycleMap.has(pc.id)) {
-        cycleMap.set(pc.id, pc);
-      }
-    });
-    const mergedCycles = Array.from(cycleMap.values());
-
-    // B) Clases
-    const classMap = new Map(currentDb.classes.map(c => [c.id, c]));
-    prismaData.classes.forEach(pc => {
-      const existing = classMap.get(pc.id);
-      if (existing) {
-        classMap.set(pc.id, { ...existing, ...pc });
-      } else {
-        classMap.set(pc.id, pc);
-      }
-    });
-    const mergedClasses = Array.from(classMap.values());
-
-    // C) Usuarios
-    const userMap = new Map(currentDb.users.map(u => [u.id, u]));
-    prismaData.users.forEach(pu => {
-      const existing = userMap.get(pu.id);
-      if (existing) {
-        if (!existing.password) {
-          userMap.set(pu.id, pu);
-        }
-      } else {
-        userMap.set(pu.id, pu);
-      }
-    });
-    const mergedUsers = Array.from(userMap.values());
-
-    // D) Alumnos
-    const studentMap = new Map(currentDb.students.map(s => [s.id, s]));
-    prismaData.students.forEach(ps => {
-      studentMap.set(ps.id, ps);
-    });
-    const mergedStudents = Array.from(studentMap.values());
-
-    const newDb = {
-      ...currentDb,
-      cycles: mergedCycles,
-      classes: mergedClasses,
-      users: mergedUsers,
-      students: mergedStudents
-    };
-
-    await writeDb(newDb);
-    const sourceSocketId = req.headers['x-socket-id'];
-    io.emit('db_update', { entity: 'all', action: 'import', sourceSocketId });
-
-    res.json({
-      success: true,
-      message: "Importación completada con éxito",
-      stats: {
-        users: mergedUsers.length,
-        classes: mergedClasses.length,
-        students: mergedStudents.length
-      },
-      data: prismaData
-    });
-
+    const stats = await runPrismaSync();
+    res.json({ success: true, message: 'Importación completada con éxito', stats });
   } catch (error) {
     const status = error.status || 500;
-    res.status(status).json({ error: error.message || "Error interno en importación" });
+    res.status(status).json({ error: error.message || 'Error interno en importación' });
   }
 });
 
@@ -596,3 +574,7 @@ httpServer.listen(PORT, () => {
   console.log(`🌍 Sirviendo frontend desde: ../dist`);
   console.log(`🔌 Proxy PrismaEdu configurado hacia: ${PRISMA_URL}`);
 });
+
+// Sync automático con PrismaEdu: al arrancar (10s delay) y cada 24h
+setTimeout(() => { runPrismaSync().catch(() => {}); }, 10000);
+setInterval(() => { runPrismaSync().catch(() => {}); }, PRISMA_SYNC_INTERVAL_MS);
