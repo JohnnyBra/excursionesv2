@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../services/mockDb';
 import { User, UserRole, ClassGroup, Student, Cycle } from '../types';
 import { useAuth } from '../App';
-import { Trash2, UserPlus, Edit, Upload, Download, Database, Users, GraduationCap, School, Search, KeyRound } from 'lucide-react';
+import { Trash2, UserPlus, Edit, Upload, Download, Database, Users, GraduationCap, School, Search, KeyRound, RefreshCw } from 'lucide-react';
 import { useToast } from './ui/Toast';
 
 const getSurname = (fullName: string) => {
@@ -76,6 +76,7 @@ export const UserManager: React.FC = () => {
     
     // Import State
     const [importClassId, setImportClassId] = useState('');
+    const [isSyncing, setIsSyncing] = useState(false);
 
     useEffect(() => {
         refreshData();
@@ -88,8 +89,28 @@ export const UserManager: React.FC = () => {
         setCycles([...db.getCycles()]);
     };
 
+    const handlePrismaSync = async () => {
+        setIsSyncing(true);
+        try {
+            const res = await fetch('/api/import/prisma', { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                await db.reload();
+                refreshData();
+                addToast(`Sincronización completada: ${data.stats.users} usuarios, ${data.stats.classes} clases actualizadas`, 'success');
+            } else {
+                addToast(data.error || 'Error al sincronizar con PrismaEDU', 'error');
+            }
+        } catch {
+            addToast('No se pudo conectar con el servidor', 'error');
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
     // Security check
-    if (user?.role !== UserRole.DIRECCION) {
+    const canAccess = user?.role === UserRole.DIRECCION || user?.role === UserRole.ADMIN;
+    if (!canAccess) {
         return <div className="p-8 text-center text-red-500 font-bold bg-white rounded-xl shadow mt-10">⛔ ACCESO DENEGADO<br/><span className="text-sm font-normal text-gray-600">Este panel es exclusivo para Dirección.</span></div>;
     }
 
@@ -501,6 +522,19 @@ export const UserManager: React.FC = () => {
                 {activeTab === 'system' && (
                     <div className="space-y-8 max-w-lg">
                         <div>
+                            <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><RefreshCw size={20}/> Sincronización con PrismaEDU</h3>
+                            <p className="text-sm text-gray-600 mb-4">Importa usuarios, clases y alumnos actualizados desde PrismaEDU. El sistema también sincroniza automáticamente cada 24 horas.</p>
+                            <button
+                                onClick={handlePrismaSync}
+                                disabled={isSyncing}
+                                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <RefreshCw size={18} className={isSyncing ? 'animate-spin' : ''} />
+                                {isSyncing ? 'Sincronizando...' : 'Sincronizar con PrismaEDU'}
+                            </button>
+                        </div>
+
+                        <div className="pt-8 border-t">
                             <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Download size={20}/> Copia de Seguridad</h3>
                             <p className="text-sm text-gray-600 mb-4">Descarga un archivo JSON con toda la información del colegio (Usuarios, Alumnos, Excursiones, Pagos).</p>
                             <button onClick={() => db.exportDatabase()} className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900 transition flex items-center gap-2">
