@@ -275,7 +275,7 @@ app.post('/api/proxy/login', loginLimiter, async (req, res) => {
       const user = data.user || data;
       const rawRole = (user.role || 'TUTOR').toUpperCase();
       const ssoRole = rawRole === 'TUTOR' ? 'TEACHER' : rawRole;
-      const ssoPayload = { userId: user.id, email: (user.email || username || '').toLowerCase(), role: ssoRole, profileId: user.id };
+      const ssoPayload = { userId: user.id, name: user.name || '', email: (user.email || username || '').toLowerCase(), role: ssoRole, profileId: user.id };
       const ssoToken = jwt.sign(ssoPayload, JWT_SSO_SECRET, { expiresIn: '8h' });
       res.cookie('BIBLIO_SSO_TOKEN', ssoToken, {
         domain: process.env.COOKIE_DOMAIN || '.bibliohispa.es',

@@ -329,6 +329,9 @@ const Settings = () => {
 
 // -- Main App --
 
+const INACTIVITY_LIMIT_MS = 30 * 60 * 1000;
+const LAST_ACTIVITY_KEY = 'last_activity';
+
 const AppContent = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -366,10 +369,13 @@ const AppContent = () => {
             const localUsers = db.getUsers();
             const existingLocal = localUsers.find(u => u.id === ssoUser.id);
             if (existingLocal) {
+              ssoUser.name = existingLocal.name || ssoUser.name;
+              ssoUser.username = existingLocal.username || ssoUser.username;
               ssoUser.coordinatorCycleId = existingLocal.coordinatorCycleId || ssoUser.coordinatorCycleId;
               ssoUser.classId = ssoUser.classId || existingLocal.classId;
             }
 
+            localStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
             setUser(ssoUser);
             localStorage.setItem('auth_user', JSON.stringify(ssoUser));
             setLoading(false);
@@ -438,6 +444,7 @@ const AppContent = () => {
       }
 
       localStorage.removeItem('excursiones_theme_manual');
+      localStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
       setUser(mergedUser);
       localStorage.setItem('auth_user', JSON.stringify(mergedUser));
       addToast(`Bienvenido/a ${userMapped.name}`, 'success');
@@ -461,6 +468,7 @@ const AppContent = () => {
       };
 
       localStorage.removeItem('excursiones_theme_manual');
+      localStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
       setUser(userMapped);
       localStorage.setItem('auth_user', JSON.stringify(userMapped));
       addToast(`Bienvenido/a ${userMapped.name}`, 'success');
@@ -472,8 +480,51 @@ const AppContent = () => {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('auth_user');
+    localStorage.removeItem(LAST_ACTIVITY_KEY);
     fetch('/api/auth/logout', { method: 'POST' }).catch(() => { });
   };
+
+  useEffect(() => {
+    if (!user) return;
+
+    const updateActivity = () => {
+      localStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        updateActivity();
+        return;
+      }
+      // Al volver: si no hubo inactividad, no hacer nada
+      const stored = localStorage.getItem(LAST_ACTIVITY_KEY);
+      if (stored && Date.now() - parseInt(stored) <= INACTIVITY_LIMIT_MS) return;
+
+      // Inactividad > 30 min: comprobar si el SSO de PrismaEdu sigue activo
+      fetch('/api/proxy/me')
+        .then(r => r.json())
+        .then(data => {
+          if (data.success && data.user) {
+            // SSO activo → renovar timestamp y continuar
+            updateActivity();
+          } else {
+            logout();
+          }
+        })
+        .catch(() => {
+          // Sin red → mantener sesión local hasta que haya conexión
+        });
+    };
+
+    const events = ['click', 'touchstart', 'keydown'] as const;
+    events.forEach(e => document.addEventListener(e, updateActivity, { passive: true }));
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      events.forEach(e => document.removeEventListener(e, updateActivity));
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [user]);
 
   const updateCurrentUser = (u: User) => {
     setUser(u);
