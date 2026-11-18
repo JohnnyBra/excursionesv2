@@ -259,3 +259,43 @@ body::after {
     opacity: 0.03;
     filter: grayscale(1) invert(1) brightness(2);
 }
+/* ============ RED DE SEGURIDAD DEL MODO OSCURO ============ */
+/* Clases claras que se usaron sin su variante dark:. Especificidad (0,1,1):
+   gana a la utilidad clara de Tailwind (0,1,0) y pierde ante cualquier dark:… (0,2,0),
+   así que solo actúa donde falta el modo oscuro. Selectores exactos (sin [class*=]). */
+html { color-scheme: light; }
+html.dark { color-scheme: dark; }
+
+html.dark :where(.bg-white, .bg-gray-50, .bg-slate-50) { background-color: rgba(255, 255, 255, 0.06); }
+html.dark :where(.bg-gray-100, .bg-gray-200, .bg-slate-100) { background-color: rgba(255, 255, 255, 0.1); }
+html.dark :where(.bg-blue-50, .bg-sky-50, .bg-indigo-50) { background-color: rgba(10, 160, 220, 0.12); }
+html.dark :where(.bg-blue-100) { background-color: rgba(10, 160, 220, 0.2); }
+html.dark :where(.bg-green-50, .bg-emerald-50) { background-color: rgba(47, 180, 124, 0.12); }
+html.dark :where(.bg-green-100) { background-color: rgba(47, 180, 124, 0.2); }
+html.dark :where(.bg-red-50) { background-color: rgba(239, 91, 76, 0.12); }
+html.dark :where(.bg-red-100) { background-color: rgba(239, 91, 76, 0.2); }
+html.dark :where(.bg-yellow-50, .bg-amber-50, .bg-orange-50) { background-color: rgba(242, 169, 59, 0.12); }
+html.dark :where(.bg-purple-50, .bg-purple-100) { background-color: rgba(10, 160, 220, 0.12); }
+
+html.dark :where(.hover\:bg-white, .hover\:bg-gray-50, .hover\:bg-gray-100):hover { background-color: rgba(255, 255, 255, 0.08); }
+html.dark :where(.hover\:bg-blue-50):hover { background-color: rgba(10, 160, 220, 0.16); }
+html.dark :where(.hover\:bg-green-100):hover { background-color: rgba(47, 180, 124, 0.2); }
+html.dark :where(.hover\:bg-red-50, .hover\:bg-red-100):hover { background-color: rgba(239, 91, 76, 0.16); }
+
+html.dark :where(.text-gray-900, .text-gray-800, .text-slate-900, .text-slate-800) { color: #f1f5f9; }
+html.dark :where(.text-gray-700, .text-slate-700) { color: #cbd5e1; }
+html.dark :where(.text-gray-600, .text-slate-600) { color: #94a3b8; }
+html.dark :where(.hover\:text-gray-700):hover { color: #e2e8f0; }
+html.dark :where(.text-blue-700, .text-blue-800, .text-blue-900) { color: #7dd3fc; }
+html.dark :where(.text-green-700, .text-green-800) { color: #6ee7b7; }
+html.dark :where(.text-red-700) { color: #fca5a5; }
+html.dark :where(.text-orange-900, .text-amber-800) { color: #fcd34d; }
+
+html.dark :where(.border-gray-100, .border-gray-200, .border-gray-300, .border-slate-200, .hover\:border-gray-100:hover) { border-color: rgba(255, 255, 255, 0.1); }
+html.dark :where(.border-blue-100, .border-blue-200, .hover\:border-blue-200:hover) { border-color: rgba(10, 160, 220, 0.3); }
+html.dark :where(.border-green-100, .border-green-200) { border-color: rgba(47, 180, 124, 0.3); }
+html.dark :where(.border-red-100, .border-red-200) { border-color: rgba(239, 91, 76, 0.3); }
+html.dark :where(.divide-gray-100, .divide-gray-200) > * + * { border-color: rgba(255, 255, 255, 0.08); }
+html.dark :where(.bg-white\/50, .bg-white\/60, .bg-white\/80, .bg-gray-50\/50, .bg-gray-100\/50) { background-color: rgba(255, 255, 255, 0.05); }
+html.dark :where(.bg-green-50\/50) { background-color: rgba(47, 180, 124, 0.08); }
+html.dark :where(.bg-blue-50\/50, .bg-blue-100\/50) { background-color: rgba(10, 160, 220, 0.08); }

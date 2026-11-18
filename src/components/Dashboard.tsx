@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { useAuth } from '../App';
+import { useDataSync } from '../hooks/useDataSync';
 import { db } from '../services/mockDb';
 import { UserRole, ExcursionScope } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -29,6 +30,7 @@ export const Dashboard: React.FC = () => {
   // Get fresh user data to avoid stale classId from localStorage
   const currentUser = user ? db.getUsers().find(u => u.id === user.id) || user : user;
 
+  useDataSync(); // se repinta al cambiar los datos o el curso escolar
   const excursions = db.getExcursions();
   const participations = db.getParticipations();
 

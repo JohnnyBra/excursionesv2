@@ -92,7 +92,8 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
 
     // Report Modal State
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-    const [reportYear, setReportYear] = useState(new Date().getFullYear());
+    // El informe anual es el del curso escolar elegido en la cabecera
+    const reportYear = db.getSchoolYear();
     const [reportSort, setReportSort] = useState<'class' | 'trimester'>('class');
     const [trimesterDates, setTrimesterDates] = useState({
         t1Start: '', t1End: '',
@@ -476,6 +477,9 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
             setSelectedExcursion(excursionToSave);
             setFormData(excursionToSave);
             setIsEditing(false);
+            // Si la fecha cae en otro curso escolar, pasamos a ese curso para no perderla de vista
+            const savedYear = db.schoolYearOf(excursionToSave.dateStart);
+            if (savedYear !== db.getSchoolYear()) db.setSchoolYear(savedYear);
             loadData();
 
             // Refresh participants immediately
@@ -1120,8 +1124,8 @@ export const ExcursionManager: React.FC<ExcursionManagerProps> = ({ mode }) => {
                             <FileBarChart className="text-blue-600" /> Informe Anual Global
                         </h3>
                         <div className="mb-4">
-                            <label className="label-sm">Año de Inicio del Curso</label>
-                            <input type="number" className="input-field" value={reportYear} onChange={e => setReportYear(parseInt(e.target.value))} />
+                            <label className="label-sm">Curso escolar</label>
+                            <p className="input-field">{reportYear}/{reportYear + 1} <span className="text-xs text-gray-500">(cámbialo en la cabecera)</span></p>
                         </div>
                         <div className="mb-6">
                             <label className="label-sm">Tipo de Informe</label>
