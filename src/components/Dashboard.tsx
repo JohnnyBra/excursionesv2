@@ -3,10 +3,11 @@ import { useAuth } from '../App';
 import { db } from '../services/mockDb';
 import { UserRole, ExcursionScope } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { Calendar, DollarSign, Users, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const StatCard = ({ title, value, icon: Icon, color, onClick }: any) => (
+const SUITE_ICONOS = 'https://prisma.bibliohispa.es/suite/iconos/';
+
+const StatCard = ({ title, value, icono, negativo, onClick }: any) => (
   <div
     onClick={onClick}
     className={`glass p-6 rounded-2xl transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${onClick ? 'cursor-pointer' : ''}`}
@@ -14,11 +15,9 @@ const StatCard = ({ title, value, icon: Icon, color, onClick }: any) => (
     <div className="flex justify-between items-start">
       <div>
         <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
-        <h3 className="text-2xl font-bold mt-1 text-gray-900 dark:text-white font-display">{value}</h3>
+        <h3 className={`text-2xl font-bold mt-1 font-display ${negativo ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>{value}</h3>
       </div>
-      <div className={`p-3 rounded-xl ${color} shadow-lg shadow-current/20`}>
-        <Icon size={24} className="text-white" />
-      </div>
+      <img src={`${SUITE_ICONOS}${icono}.webp`} alt="" className="w-14 h-14 object-contain drop-shadow-lg shrink-0" />
     </div>
   </div>
 );
@@ -130,30 +129,27 @@ export const Dashboard: React.FC = () => {
         <StatCard
           title="Excursiones Activas"
           value={upcomingExcursions.length}
-          icon={Calendar}
-          color="bg-gradient-to-br from-blue-500 to-blue-600"
+          icono="calendario"
           onClick={() => navigate('/excursions')}
         />
         <StatCard
           title="Participantes Totales"
           value={uniqueStudentsCount}
-          icon={Users}
-          color="bg-gradient-to-br from-purple-500 to-purple-600"
+          icono="participantes"
         />
         {(user?.role === UserRole.DIRECCION || user?.role === UserRole.TESORERIA) && (
           <>
             <StatCard
               title="Recaudado Total"
               value={`${totalCollected}€`}
-              icon={DollarSign}
-              color="bg-gradient-to-br from-emerald-500 to-emerald-600"
+              icono="hucha"
               onClick={() => navigate('/treasury')}
             />
             <StatCard
               title="Balance Neto"
               value={`${totalCollected - totalCost}€`}
-              icon={TrendingUp}
-              color={totalCollected - totalCost >= 0 ? "bg-gradient-to-br from-teal-500 to-teal-600" : "bg-gradient-to-br from-red-500 to-red-600"}
+              icono="balance"
+              negativo={totalCollected - totalCost < 0}
               onClick={() => navigate('/treasury')}
             />
           </>
@@ -189,9 +185,7 @@ export const Dashboard: React.FC = () => {
             ))}
             {upcomingExcursions.length === 0 && (
               <div className="text-center py-12">
-                <div className="w-16 h-16 bg-gray-50 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-300 dark:text-gray-600">
-                  <Calendar size={32} />
-                </div>
+                <img src={`${SUITE_ICONOS}calendario.webp`} alt="" className="w-20 h-20 object-contain mx-auto mb-3 opacity-70" />
                 <p className="text-gray-400 dark:text-gray-500 font-medium">No hay excursiones próximas</p>
               </div>
             )}
