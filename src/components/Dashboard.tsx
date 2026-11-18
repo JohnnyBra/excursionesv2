@@ -17,7 +17,7 @@ const StatCard = ({ title, value, icono, negativo, onClick }: any) => (
         <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
         <h3 className={`text-2xl font-bold mt-1 font-display ${negativo ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>{value}</h3>
       </div>
-      <img src={`${SUITE_ICONOS}${icono}.webp`} alt="" className="w-14 h-14 object-contain drop-shadow-lg shrink-0" />
+      <img src={`${SUITE_ICONOS}${icono}.webp`} alt="" className="w-14 h-14 object-contain shrink-0" />
     </div>
   </div>
 );

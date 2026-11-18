@@ -4,7 +4,7 @@
 /* ============ ROOT VARIABLES ============ */
 :root {
     /* Default (Light Mode) */
-    --bg-app: #f0f0ff;
+    --bg-app: #f5f3ee;
     /* surface-50 */
     --bg-card: rgba(255, 255, 255, 0.7);
     --text-main: #0f172a;
@@ -19,10 +19,10 @@
     --glass-bg-light: rgba(255, 255, 255, 0.8);
     --glass-bg-medium: rgba(255, 255, 255, 0.9);
 
-    --mesh-auth: radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 20%, rgba(168, 85, 247, 0.15) 0%, transparent 50%),
-        radial-gradient(ellipse at 50% 80%, rgba(236, 72, 153, 0.15) 0%, transparent 50%),
-        linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    /* Suite La Hispanidad: papel cálido con la luz ámbar de Excursiones */
+    --mesh-auth: radial-gradient(ellipse 70% 45% at 60% 0%, rgba(242, 169, 59, 0.16) 0%, transparent 70%),
+        radial-gradient(ellipse at 10% 85%, rgba(20, 94, 166, 0.08) 0%, transparent 55%),
+        linear-gradient(180deg, #f7f6f2 0%, #f5f3ee 55%, #edf1f6 100%);
 
     /* Safe areas */
     --safe-top: env(safe-area-inset-top, 0px);
@@ -34,7 +34,7 @@
 /* Dark Mode (Class based for manual toggle + system preference via JS) */
 .dark {
     /* Dark Mode Defaults (Matching PrismaEdu Original) */
-    --bg-app: #0f172a;
+    --bg-app: #06121f;
     /* surface-900 */
     --bg-card: rgba(255, 255, 255, 0.06);
     --text-main: #f1f5f9;
@@ -48,10 +48,10 @@
     --glass-bg-light: rgba(255, 255, 255, 0.1);
     --glass-bg-medium: rgba(255, 255, 255, 0.14);
 
-    --mesh-auth: radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.4) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 20%, rgba(168, 85, 247, 0.35) 0%, transparent 50%),
-        radial-gradient(ellipse at 50% 80%, rgba(236, 72, 153, 0.3) 0%, transparent 50%),
-        linear-gradient(135deg, #0f0a2a 0%, #1a1145 50%, #0f172a 100%);
+    /* Suite La Hispanidad: tinta del escudo con la luz ámbar de Excursiones */
+    --mesh-auth: radial-gradient(ellipse 70% 45% at 60% 0%, rgba(242, 169, 59, 0.16) 0%, transparent 70%),
+        radial-gradient(ellipse at 10% 80%, rgba(20, 94, 166, 0.30) 0%, transparent 55%),
+        linear-gradient(180deg, #06121f 0%, #0a1c33 55%, #0b223d 100%);
 }
 
 /* ============ BASE ============ */
@@ -177,7 +177,7 @@ body {
 }
 
 .text-gradient {
-    background: linear-gradient(135deg, #818cf8, #c084fc, #f472b6);
+    background: linear-gradient(135deg, #0aa0dc, #f2a93b);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -198,8 +198,8 @@ body {
 }
 
 .input-field:focus {
-    border-color: #6366f1;
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+    border-color: #0aa0dc;
+    box-shadow: 0 0 0 2px rgba(10, 160, 220, 0.22);
 }
 
 .input-field::placeholder {
@@ -215,8 +215,8 @@ body {
 
 .dark .input-field:focus {
     background-color: rgba(0, 0, 0, 0.2);
-    border-color: #818cf8;
-    box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.2);
+    border-color: #30b5e8;
+    box-shadow: 0 0 0 2px rgba(48, 181, 232, 0.22);
 }
 
 .dark .input-field::placeholder {
