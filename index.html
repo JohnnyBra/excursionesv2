@@ -9,9 +9,7 @@
   <link rel="apple-touch-icon" href="https://prisma.bibliohispa.es/suite/iconos/excursiones-180.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap"
-    rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
   <!-- Identidad común de la Suite La Hispanidad (cabecera, firma, escudo): se sirve desde Prisma -->
   <link rel="stylesheet" href="https://prisma.bibliohispa.es/suite/hispanidad-suite.css" />
   <link rel="stylesheet" href="/src/styles/theme.css" />
@@ -22,16 +20,22 @@
       theme: {
         extend: {
           fontFamily: {
-            display: ['Outfit', 'sans-serif'],
-            body: ['Plus Jakarta Sans', 'sans-serif'],
+            display: ['Bricolage Grotesque', 'Figtree', 'sans-serif'],
+            body: ['Figtree', 'sans-serif'],
           },
           colors: {
-            primary: { 50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc', 400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 800: '#3730a3', 900: '#312e81', 950: '#1e1b4b' },
-            secondary: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74', 400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c', 800: '#9a3412', 900: '#7c2d12' },
-            accent: { 50: '#faf5ff', 100: '#f3e8ff', 200: '#e9d5ff', 300: '#d8b4fe', 400: '#c084fc', 500: '#a855f7', 600: '#9333ea', 700: '#7e22ce', 800: '#6b21a8', 900: '#581c87' },
-            school: { 50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a' },
-            home: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74', 400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c', 800: '#9a3412', 900: '#7c2d12' },
-            surface: { 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 400: '#94a3b8', 500: '#64748b', 600: '#475569', 700: '#334155', 800: '#1e293b', 900: '#0f172a' },
+            // Paleta de la Suite La Hispanidad (marino y celeste del escudo; Excursiones = ámbar). Sin violeta.
+            primary: { 50: '#eef5fb', 100: '#d5e7f6', 200: '#abcfed', 300: '#78b1e0', 400: '#4a9ad8', 500: '#2373bd', 600: '#145ea6', 700: '#0a4a8c', 800: '#0b3d72', 900: '#0c325c', 950: '#081f3a' },
+            secondary: { 50: '#fff8eb', 100: '#feedc8', 200: '#fdd98d', 300: '#f8bf57', 400: '#f2a93b', 500: '#e48b17', 600: '#c66b0f', 700: '#a14d10', 800: '#833d14', 900: '#6c3314' },
+            accent: { 50: '#ecf9fe', 100: '#d2f0fc', 200: '#a6e1f8', 300: '#6ccdf2', 400: '#30b5e8', 500: '#0aa0dc', 600: '#0882b6', 700: '#0b6893', 800: '#0f5678', 900: '#124864', 950: '#0b2f42' },
+            school: { 50: '#eef5fb', 100: '#d5e7f6', 200: '#abcfed', 300: '#78b1e0', 400: '#4a9ad8', 500: '#2373bd', 600: '#145ea6', 700: '#0a4a8c', 800: '#0b3d72', 900: '#0c325c', 950: '#081f3a' },
+            home: { 50: '#fff8eb', 100: '#feedc8', 200: '#fdd98d', 300: '#f8bf57', 400: '#f2a93b', 500: '#e48b17', 600: '#c66b0f', 700: '#a14d10', 800: '#833d14', 900: '#6c3314' },
+            surface: { 50: '#f6f8fb', 100: '#eaf0f6', 200: '#d5dfea', 300: '#b4c3d4', 400: '#8399b2', 500: '#5d7590', 600: '#425a76', 700: '#2a405b', 800: '#152a44', 900: '#0a1a2e' },
+            indigo: { 50: '#eef5fb', 100: '#d5e7f6', 200: '#abcfed', 300: '#78b1e0', 400: '#4a9ad8', 500: '#2373bd', 600: '#145ea6', 700: '#0a4a8c', 800: '#0b3d72', 900: '#0c325c', 950: '#081f3a' },
+            violet: { 50: '#ecf9fe', 100: '#d2f0fc', 200: '#a6e1f8', 300: '#6ccdf2', 400: '#30b5e8', 500: '#0aa0dc', 600: '#0882b6', 700: '#0b6893', 800: '#0f5678', 900: '#124864', 950: '#0b2f42' },
+            purple: { 50: '#ecf9fe', 100: '#d2f0fc', 200: '#a6e1f8', 300: '#6ccdf2', 400: '#30b5e8', 500: '#0aa0dc', 600: '#0882b6', 700: '#0b6893', 800: '#0f5678', 900: '#124864', 950: '#0b2f42' },
+            pink: { 50: '#fef4f2', 100: '#fde5e1', 200: '#fbcbc4', 300: '#f6a399', 400: '#f27b6e', 500: '#ef5b4c', 600: '#d9412f', 700: '#b53324', 800: '#952c21', 900: '#7c2920' },
+            fuchsia: { 50: '#fef4f2', 100: '#fde5e1', 200: '#fbcbc4', 300: '#f6a399', 400: '#f27b6e', 500: '#ef5b4c', 600: '#d9412f', 700: '#b53324', 800: '#952c21', 900: '#7c2920' },
           },
           animation: {
             'float': 'float 6s ease-in-out infinite',
@@ -45,7 +49,7 @@
   </script>
   <style>
     body {
-      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-family: 'Figtree', sans-serif;
     }
 
     h1,
@@ -54,7 +58,7 @@
     h4,
     h5,
     h6 {
-      font-family: 'Outfit', sans-serif;
+      font-family: 'Bricolage Grotesque', 'Figtree', sans-serif;
     }
   </style>
   <script type="importmap">
