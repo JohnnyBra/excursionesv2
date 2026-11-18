@@ -253,6 +253,17 @@ const prismaHeaders = {
   'Content-Type': 'application/json'
 };
 
+// Curso escolar actual (lo fija el admin en Prisma). Si Prisma no responde,
+// el que toca por la fecha: el curso empieza en septiembre.
+app.get('/api/proxy/school-year', async (req, res) => {
+  try {
+    const r = await axios.get(`${PRISMA_URL}/api/export/school-year`, { headers: prismaHeaders, timeout: 4000 });
+    if (Number.isInteger(r.data?.startYear)) return res.json({ startYear: r.data.startYear, source: 'prisma' });
+  } catch (e) { /* cae a la fecha */ }
+  const now = new Date();
+  res.json({ startYear: now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1, source: 'fecha' });
+});
+
 // Login Proxy (Manual)
 app.post('/api/proxy/login', loginLimiter, async (req, res) => {
   try {

@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { BottomNav } from './BottomNav';
+import { db } from '../services/mockDb';
+import { useDataSync } from '../hooks/useDataSync';
 
 const PRISMA = 'https://prisma.bibliohispa.es';
 const SUITE = `${PRISMA}/suite`;
@@ -21,6 +23,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { theme, setTheme } = useTheme();
+  useDataSync(); // repinta el selector cuando llega el curso oficial de Prisma
+  const schoolYear = db.getSchoolYear();
+  const officialYear = db.getOfficialSchoolYear();
+  const yearOptions = Array.from(new Set([officialYear - 3, officialYear - 2, officialYear - 1, officialYear, officialYear + 1, schoolYear])).sort((a, b) => b - a);
+  const shortYear = (y: number) => `${String(y).slice(-2)}/${String(y + 1).slice(-2)}`;
+  const nextTheme = { light: 'dark', dark: 'system', system: 'light' } as const;
+  const ThemeIcon = theme === 'light' ? Sun : theme === 'dark' ? Moon : Monitor;
 
   const handleNav = (path: string) => {
     navigate(path);
@@ -64,7 +73,28 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </a>
 
         <div className="flex items-center gap-2">
-          <div className="flex bg-gray-200 dark:bg-zinc-800 rounded-lg p-0.5" role="group" aria-label="Tema">
+          <label className="hidden sm:inline text-sm text-gray-500 dark:text-gray-400" htmlFor="curso-escolar">Curso</label>
+          <select
+            id="curso-escolar"
+            value={schoolYear}
+            onChange={e => db.setSchoolYear(Number(e.target.value))}
+            title={schoolYear === officialYear ? 'Curso escolar actual (lo fija Prisma)' : `Estás viendo otro curso; el actual es ${shortYear(officialYear)}`}
+            aria-label="Curso escolar"
+            className={`hs-boton hs-boton--suave !px-3 text-sm font-semibold cursor-pointer ${schoolYear !== officialYear ? '!border-amber-500 !text-amber-700 dark:!text-amber-300' : ''}`}
+          >
+            {yearOptions.map(y => (
+              <option key={y} value={y}>{shortYear(y)}</option>
+            ))}
+          </select>
+          <button
+            onClick={() => setTheme(nextTheme[theme])}
+            className="sm:hidden hs-boton hs-boton--suave !px-3"
+            title="Cambiar tema"
+            aria-label={`Tema: ${theme === 'light' ? 'claro' : theme === 'dark' ? 'oscuro' : 'automático'}. Pulsa para cambiar`}
+          >
+            <ThemeIcon size={16} />
+          </button>
+          <div className="hidden sm:flex bg-gray-200 dark:bg-zinc-800 rounded-lg p-0.5" role="group" aria-label="Tema">
             {themeButton('light', Sun, 'Modo claro')}
             {themeButton('system', Monitor, 'Automático')}
             {themeButton('dark', Moon, 'Modo oscuro')}

@@ -246,7 +246,7 @@ export const UserManager: React.FC = () => {
             <h2 className="text-2xl font-bold text-gray-800">Panel de Administración</h2>
             
             {/* Tabs */}
-            <div className="flex border-b border-gray-200 bg-white rounded-t-xl overflow-hidden shadow-sm">
+            <div className="flex border-b border-gray-200 bg-white rounded-t-xl overflow-x-auto shadow-sm">
                 {[
                     { id: 'users', label: 'Usuarios', icon: Users },
                     { id: 'classes', label: 'Clases y Ciclos', icon: School },
@@ -256,7 +256,7 @@ export const UserManager: React.FC = () => {
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id as any)}
-                        className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${activeTab === tab.id ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:bg-gray-50'}`}
+                        className={`flex items-center gap-2 px-4 sm:px-6 py-4 font-medium whitespace-nowrap shrink-0 transition-colors ${activeTab === tab.id ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:bg-gray-50'}`}
                     >
                         <tab.icon size={18} /> {tab.label}
                     </button>

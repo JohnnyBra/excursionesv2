@@ -19,6 +19,14 @@ let isInitialized = false;
 let socket: Socket | null = null;
 let listeners: Array<() => void> = [];
 
+// Curso escolar: año en que empieza (2025 = curso 2025/26, de septiembre a agosto).
+// El oficial viene de Prisma; el usuario puede mirar otro con el selector de la cabecera.
+const yearByDate = () => { const d = new Date(); return d.getMonth() >= 8 ? d.getFullYear() : d.getFullYear() - 1; };
+let officialSchoolYear = yearByDate();
+let schoolYear = officialSchoolYear;
+let schoolYearPicked = false;
+const inSchoolYear = (dateStart: string, y: number) => dateStart >= `${y}-09-01` && dateStart < `${y + 1}-09-01`;
+
 // Datos Iniciales por defecto (por si falla servidor o primera carga)
 const MOCK_CYCLES: Cycle[] = [
   { id: 'c1', name: 'Infantil (3, 4, 5 años)' },
@@ -249,6 +257,12 @@ const fetchAndLoadData = async () => {
         console.error("Error cargando datos de PrismaEdu:", proxyErr);
       }
 
+      const sy = await apiCall('/proxy/school-year').catch(() => null);
+      if (Number.isInteger(sy?.startYear)) {
+        officialSchoolYear = sy.startYear;
+        if (!schoolYearPicked) schoolYear = officialSchoolYear;
+      }
+
       console.log("Datos sincronizados con servidor");
       notifyListeners();
       return true;
@@ -394,7 +408,15 @@ export const db = {
   getCycles: () => localState.cycles,
   getClasses: () => localState.classes,
   getStudents: () => localState.students,
-  getExcursions: () => localState.excursions,
+  getExcursions: () => localState.excursions.filter(e => inSchoolYear(e.dateStart || '', schoolYear)),
+  getSchoolYear: () => schoolYear,
+  schoolYearOf: (dateStart: string) => { const [y, m] = dateStart.split('-').map(Number); return m >= 9 ? y : y - 1; },
+  getOfficialSchoolYear: () => officialSchoolYear,
+  setSchoolYear: (y: number) => {
+    schoolYear = y;
+    schoolYearPicked = y !== officialSchoolYear;
+    notifyListeners();
+  },
   getParticipations: () => localState.participations,
 
   // Direct Access Properties
